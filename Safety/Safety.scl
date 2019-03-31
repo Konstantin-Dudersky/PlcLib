@@ -1,0 +1,926 @@
+﻿FUNCTION "Error" : Void
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Condition : Bool;
+      NewSubfunction : Word;
+      NewErrorId : Word;
+   END_VAR
+
+   VAR_IN_OUT 
+      Error : Bool;
+      ErrorId : DWord;
+   END_VAR
+
+   VAR_TEMP 
+      tmpDw : DWord;
+      tmpDwAt AT tmpDw : Array[0..1] of Word;
+   END_VAR
+
+
+BEGIN
+	IF #Condition AND NOT #Error THEN
+	    #Error := true;
+	    #tmpDwAt[0] := INT_TO_WORD(#NewSubfunction);
+	    #tmpDwAt[1] := #NewErrorId;
+	    #ErrorId := #tmpDw;
+	END_IF;
+END_FUNCTION
+
+FUNCTION "SM_Trans" : Byte
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      C : Bool;   // условие перехода
+      P : USInt;   // приоритет (0 - наивысший)
+   END_VAR
+
+   VAR_TEMP 
+      tmp : Struct
+         usiPrio : USInt;
+      END_STRUCT;
+      tmpByte : Byte;
+      tmpByteAt AT tmpByte : Array[0..7] of Bool;
+      tmpOut : Byte;
+      tmpOutAt AT tmpOut : Array[0..7] of Bool;
+   END_VAR
+
+
+BEGIN
+	IF #P >= 15 THEN
+	    #tmp.usiPrio := 15;
+	ELSE
+	    #tmp.usiPrio := #P;
+	END_IF;
+	
+	#tmpByte := USINT_TO_BYTE(#tmp.usiPrio);
+	
+	#tmpOut := #tmpByte;
+	#tmpOutAt[7] := #C;
+	
+	#SM_Trans := #tmpOut;
+END_FUNCTION
+
+FUNCTION_BLOCK "StateMachine"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      aTr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..#MAX_INDEX, 0..#MAX_INDEX] of Byte;
+   END_VAR
+
+   VAR_OUTPUT 
+      iState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      iStatePrev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      iStateNext { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      xStateFirstCall { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      xStateLastCall { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      timState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+      xError { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      dwErrorId { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         prev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            iState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+         END_STRUCT;
+         timSampleTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+         iStateNext { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+         xInitialized { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      END_STRUCT;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         TopSiNone {InstructionName := 'SI_none'; LibVersion := '1.0'} : SI_none;
+         TopSiCyclic {InstructionName := 'SI_Cyclic'; LibVersion := '1.0'} : SI_Cyclic;
+         TopSiProgramCycle {InstructionName := 'SI_ProgramCycle'; LibVersion := '1.0'} : SI_ProgramCycle;
+         StartUpSi {InstructionName := 'SI_Startup'; LibVersion := '1.0'} : SI_Startup;
+         TempInt : Int;
+         TempWord : Word;
+         TempUdint : UDInt;
+         SampleTime : UDInt;
+         xTransCond : Bool;
+         usiTransPrio : USInt;
+         usiBestPrio : USInt;
+      END_STRUCT;
+      i : Int;
+      tempBy : Byte;
+      tempByAt AT tempBy : Array[0..7] of Bool;
+   END_VAR
+
+   VAR CONSTANT 
+      MAX_INDEX : Int := 19;
+      EID_RD_SINFO : Word := 16#2;
+      EID_QRY_CINT : Word := 16#3;
+   END_VAR
+
+
+BEGIN
+	(*
+	TODO - из одного состояния нет переходов с одинаковым приоритетом
+	TODO - обнуление массива переходов при первой инициализации
+	*)
+	
+	IF NOT #stat.xInitialized THEN
+	    // определяем OB_Class вызывающего блока
+	    #temp.TempInt := RD_SINFO(TOP_SI => #temp.TopSiNone, START_UP_SI => #temp.StartUpSi);
+	    
+	    "Error"(Condition := #temp.TempInt <> 16#0,
+	            NewSubfunction := #EID_RD_SINFO,
+	            NewErrorId := INT_TO_WORD(#temp.TempInt),
+	            Error := #xError,
+	            ErrorId := #dwErrorId);
+	    
+	    CASE #temp.TopSiNone.OB_Class OF
+	        1:
+	            #temp.TempInt := RD_SINFO(TOP_SI => #temp.TopSiProgramCycle, START_UP_SI => #temp.StartUpSi);
+	            "Error"(Condition := #temp.TempInt <> 16#0,
+	                    NewSubfunction := #EID_RD_SINFO,
+	                    NewErrorId := INT_TO_WORD(#temp.TempInt),
+	                    Error := #xError,
+	                    ErrorId := #dwErrorId);
+	            
+	            #stat.timSampleTime := T#0ms;
+	            
+	        30:
+	            #temp.TempInt := RD_SINFO(TOP_SI => #temp.TopSiCyclic, START_UP_SI => #temp.StartUpSi);
+	            "Error"(Condition := #temp.TempInt <> 16#0,
+	                    NewSubfunction := #EID_RD_SINFO,
+	                    NewErrorId := INT_TO_WORD(#temp.TempInt),
+	                    Error := #xError,
+	                    ErrorId := #dwErrorId);
+	            
+	            #temp.TempInt := QRY_CINT(OB_NR := UINT_TO_INT(#temp.TopSiCyclic.OB_Nr), CYCLE => #temp.SampleTime, PHASE => #temp.TempUdint, STATUS => #temp.TempWord);
+	            "Error"(Condition := #temp.TempInt <> 16#0,
+	                    NewSubfunction := #EID_QRY_CINT,
+	                    NewErrorId := INT_TO_WORD(#temp.TempInt),
+	                    Error := #xError,
+	                    ErrorId := #dwErrorId);
+	            
+	            #stat.timSampleTime := UDINT_TO_TIME(#temp.SampleTime / 1000);
+	    END_CASE;
+	    
+	    // если нет ошибок, заканчиваем инициализацию
+	    #stat.xInitialized := NOT #xError;
+	ELSE
+	
+	    // проверяем переходы
+	    IF #iState = #stat.iStateNext THEN
+	        #temp.usiBestPrio := 15;
+	        
+	        FOR #i := 0 TO #MAX_INDEX DO
+	            #tempBy := #aTr[#iState, #i];
+	            #temp.xTransCond := #tempByAt[7];
+	            #tempByAt[7] := 0;
+	            #temp.usiTransPrio := BYTE_TO_USINT(#tempBy);
+	            
+	            IF #temp.xTransCond AND #temp.usiTransPrio < #temp.usiBestPrio THEN
+	                #stat.iStateNext := #i;
+	                #temp.usiBestPrio := #temp.usiTransPrio;
+	            END_IF;
+	        END_FOR;
+	        
+	        #timState += #stat.timSampleTime;
+	    ELSE
+	        #iState := #stat.iStateNext;
+	        
+	        #timState := T#0ms;
+	    END_IF;
+	    
+	    #xStateFirstCall := #iState <> #stat.prev.iState;
+	    IF #xStateFirstCall THEN
+	        #iStatePrev := #stat.prev.iState;
+	    END_IF;
+	    
+	    #xStateLastCall := #iState <> #stat.iStateNext;
+	    IF #xStateLastCall THEN
+	        #iStateNext := #stat.iStateNext;
+	    END_IF;
+	    
+	    #stat.prev.iState := #iState;
+	END_IF;
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "SF_EmergencyStop"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Активация защиты (1 = устройство активно)
+      S_EstopIn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_StartReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса при запуске (0 = требуется ручной сброс)
+      S_AutoReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса после срабатывания защиты (0 = требуется ручной сброс)
+      Reset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Сброс защиты (0 => 1)
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Блок активен
+      S_EstopOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Запрос безопасного состояния
+      ResetRequest { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Требуется сброс
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Ошибка исполнения блока
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   // Диагностический код
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         prev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            Reset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+         END_STRUCT;
+      END_STRUCT;
+      SM { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "StateMachine";
+   END_VAR
+
+   VAR CONSTANT 
+      ST_IDLE : Int;
+      ST_INIT : Int := 1;
+      ST_WAITESTOP1 : Int := 2;
+      ST_WAITESTOP2 : Int := 3;
+      ST_WAITRESET1 : Int := 4;
+      ST_WAITRESET2 : Int := 5;
+      ST_ENABLED : Int := 6;
+   END_VAR
+
+
+BEGIN
+	#SM.aTr[#ST_IDLE, #ST_INIT] := "SM_Trans"(C := #Activate, P := 0);
+	
+	#SM.aTr[#ST_INIT, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_INIT, #ST_WAITESTOP1] := "SM_Trans"(C := NOT #S_StartReset, P := 1);
+	#SM.aTr[#ST_INIT, #ST_WAITESTOP2] := "SM_Trans"(C := #S_StartReset AND NOT #S_EstopIn, P := 2);
+	#SM.aTr[#ST_INIT, #ST_ENABLED] := "SM_Trans"(C := #S_StartReset AND #S_EstopIn, P := 3);
+	
+	#SM.aTr[#ST_WAITESTOP1, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITESTOP1, #ST_WAITRESET1] := "SM_Trans"(C := #S_EstopIn, P := 1);
+	
+	#SM.aTr[#ST_WAITRESET1, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITRESET1, #ST_WAITESTOP1] := "SM_Trans"(C := NOT #S_EstopIn, P := 1);
+	#SM.aTr[#ST_WAITRESET1, #ST_ENABLED] := "SM_Trans"(C := #Reset AND NOT #stat.prev.Reset, P := 2);
+	
+	#SM.aTr[#ST_WAITESTOP2, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITESTOP2, #ST_WAITRESET2] := "SM_Trans"(C := #S_EstopIn AND NOT #S_AutoReset, P := 1);
+	#SM.aTr[#ST_WAITESTOP2, #ST_ENABLED] := "SM_Trans"(C := #S_EstopIn AND #S_AutoReset, P := 2);
+	
+	#SM.aTr[#ST_WAITRESET2, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITRESET2, #ST_WAITESTOP2] := "SM_Trans"(C := NOT #S_EstopIn, P := 1);
+	#SM.aTr[#ST_WAITRESET2, #ST_ENABLED] := "SM_Trans"(C := #Reset AND NOT #stat.prev.Reset, P := 2);
+	
+	#SM.aTr[#ST_ENABLED, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_ENABLED, #ST_WAITESTOP2] := "SM_Trans"(C := NOT #S_EstopIn, P := 1);
+	
+	#SM();
+	
+	CASE #SM.iState OF
+	        #ST_IDLE :
+	            #DiagCode := 16#0000;
+	            
+	        #ST_ENABLED:
+	            #DiagCode := 16#8000;
+	            
+	        #ST_INIT:
+	            #DiagCode := 16#8001;
+	            
+	        #ST_WAITRESET1:
+	            IF #SM.xStateFirstCall AND #Reset THEN
+	                #DiagCode := 16#C001;
+	            END_IF;
+	            
+	            IF #DiagCode <> 16#C001 THEN
+	                #DiagCode := 16#8402;
+	            END_IF;
+	            
+	        #ST_WAITRESET2:
+	            IF #SM.xStateFirstCall AND #Reset THEN
+	                #DiagCode := 16#C011;
+	            END_IF;
+	            
+	            IF #DiagCode <> 16#C011 THEN
+	                #DiagCode := 16#8404;
+	            END_IF;
+	            
+	        #ST_WAITESTOP1:
+	            #DiagCode := 16#8802;
+	            
+	        #ST_WAITESTOP2:
+	            #DiagCode := 16#8804;
+	            
+	END_CASE;
+	
+	
+	#Ready := #SM.iState <> #ST_IDLE;
+	#S_EstopOut := #SM.iState = #ST_ENABLED;
+	#SafetyDemand := #SM.iState = #ST_WAITESTOP1 OR #SM.iState = #ST_WAITESTOP2;
+	#ResetRequest := #DiagCode = 16#8402 OR #DiagCode = 16#8404;
+	#Error := #DiagCode = 16#C001 OR #DiagCode = 16#C011;
+	
+	#stat.prev.Reset := #Reset;
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "SF_Equivalent"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_ChannelA { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_ChannelB { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiscrepancyTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_EquivalentOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+   END_VAR
+
+   VAR 
+      SM { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "StateMachine";
+   END_VAR
+
+   VAR CONSTANT 
+      ST_IDLE : Int;
+      ST_INIT : Int := 1;
+      ST_WAITB : Int := 2;
+      ST_WAITA : Int := 3;
+      ST_ERROR12 : Int := 4;
+      ST_ENABLE : Int := 7;
+      ST_WAITFROMACTIVE : Int := 6;
+      ST_ERROR3 : Int := 5;
+   END_VAR
+
+
+BEGIN
+	#SM.aTr[#ST_IDLE, #ST_INIT] := "SM_Trans"(C := #Activate, P := 0);
+	
+	#SM.aTr[#ST_INIT, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_INIT, #ST_WAITB] := "SM_Trans"(C := #S_ChannelA AND NOT #S_ChannelB, P := 1);
+	#SM.aTr[#ST_INIT, #ST_WAITA] := "SM_Trans"(C := NOT #S_ChannelA AND #S_ChannelB, P := 2);
+	#SM.aTr[#ST_INIT, #ST_ENABLE] := "SM_Trans"(C := #S_ChannelA AND #S_ChannelB, P := 3);
+	
+	#SM.aTr[#ST_WAITB, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITB, #ST_ERROR12] := "SM_Trans"(C := #SM.timState >= #DiscrepancyTime, P := 1);
+	#SM.aTr[#ST_WAITB, #ST_INIT] := "SM_Trans"(C := NOT #S_ChannelA, P := 2);
+	#SM.aTr[#ST_WAITB, #ST_ENABLE] := "SM_Trans"(C := #S_ChannelB, P := 3);
+	
+	#SM.aTr[#ST_WAITA, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITA, #ST_ERROR12] := "SM_Trans"(C := #SM.timState >= #DiscrepancyTime, P := 1);
+	#SM.aTr[#ST_WAITA, #ST_INIT] := "SM_Trans"(C := NOT #S_ChannelB, P := 2);
+	#SM.aTr[#ST_WAITA, #ST_ENABLE] := "SM_Trans"(C := #S_ChannelA, P := 3);
+	
+	#SM.aTr[#ST_ERROR12, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_ERROR12, #ST_INIT] := "SM_Trans"(C := NOT #S_ChannelA AND NOT #S_ChannelB, P := 1);
+	
+	#SM.aTr[#ST_ENABLE, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_ENABLE, #ST_WAITFROMACTIVE] := "SM_Trans"(C := #S_ChannelA XOR #S_ChannelB, P := 1);
+	#SM.aTr[#ST_ENABLE, #ST_INIT] := "SM_Trans"(C := NOT #S_ChannelA AND NOT #S_ChannelB, P := 2);
+	
+	#SM.aTr[#ST_WAITFROMACTIVE, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITFROMACTIVE, #ST_ERROR3] := "SM_Trans"(C := #SM.timState >= #DiscrepancyTime, P := 1);
+	#SM.aTr[#ST_WAITFROMACTIVE, #ST_INIT] := "SM_Trans"(C := NOT #S_ChannelA AND NOT #S_ChannelB, P := 2);
+	
+	#SM.aTr[#ST_ERROR3, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_ERROR3, #ST_INIT] := "SM_Trans"(C := NOT #S_ChannelA AND NOT #S_ChannelB, P := 1);
+	
+	#SM();
+	
+	CASE #SM.iState OF
+	    #ST_IDLE:
+	        #DiagCode := 16#0000;
+	        
+	    #ST_ENABLE:
+	        #DiagCode := 16#8000;
+	        
+	    #ST_INIT:
+	        #DiagCode := 16#8801;
+	        
+	    #ST_WAITB:
+	        #DiagCode := 16#8802;
+	        
+	    #ST_WAITA:
+	        #DiagCode := 16#8804;
+	        
+	    #ST_WAITFROMACTIVE:
+	        #DiagCode := 16#8806;
+	        
+	    #ST_ERROR12:
+	        IF #SM.xStateFirstCall THEN
+	            IF #SM.iStatePrev = #ST_WAITB THEN
+	                #DiagCode := 16#C010;
+	            ELSIF #SM.iStatePrev = #ST_WAITA THEN
+	                #DiagCode := 16#C020;
+	            END_IF;
+	        END_IF;
+	
+	    #ST_ERROR3:
+	        #DiagCode := 16#C030;
+	        
+	END_CASE;
+	
+	#Ready := #SM.iState <> #ST_IDLE;
+	#S_EquivalentOut := #SM.iState = #ST_ENABLE;
+	#SafetyDemand := #SM.iState = #ST_INIT OR #SM.iState = #ST_WAITB OR #SM.iState = #ST_WAITA OR #SM.iState = #ST_WAITFROMACTIVE;
+	#Error := #DiagCode = 16#C010 OR #DiagCode = 16#C020 OR #DiagCode = 16#C030;
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_EDM"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "SF_ESPE"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Активация защиты (1 = устройство активно)
+      S_PSE_In { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_StartReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса при запуске (0 = требуется ручной сброс)
+      S_AutoReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса после срабатывания защиты (0 = требуется ручной сброс)
+      Reset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Сброс защиты (0 => 1)
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Блок активен
+      S_PSE_Out { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Запрос безопасного состояния
+      ResetRequest { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Требуется сброс
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Ошибка исполнения блока
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   // Диагностический код
+   END_VAR
+
+   VAR 
+      SF_EmergencyStop_Instance { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_EmergencyStop";
+   END_VAR
+
+
+BEGIN
+	#SF_EmergencyStop_Instance(Activate := #Activate,
+	                           S_EstopIn := #S_PSE_In,
+	                           S_StartReset := #S_StartReset,
+	                           S_AutoReset := #S_AutoReset,
+	                           Reset := #Reset,
+	                           Ready => #Ready,
+	                           S_EstopOut => #S_PSE_Out,
+	                           SafetyDemand => #SafetyDemand,
+	                           ResetRequest => #ResetRequest,
+	                           Error => #Error,
+	                           DiagCode => #DiagCode);
+	
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "SF_ResetButton"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      ResetRequested { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      ResetIn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      TrailingMinimum { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time := T#350ms;
+      TrailingMaximum { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time := T#2s;
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      ResetOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         prev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            ResetIn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+         END_STRUCT;
+      END_STRUCT;
+      SM { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "StateMachine";
+   END_VAR
+
+   VAR CONSTANT 
+      MINTRAILINGMIMINUM : Time := T#100ms;
+      ST_IDLE : Int;
+      ST_WAITRAISE : Int := 1;
+      ST_WAITFALL : Int := 2;
+      ST_ERRORMAX : Int := 3;
+      ST_ERRORMIN : Int := 4;
+      ST_RESET : Int := 5;
+   END_VAR
+
+
+BEGIN
+	#SM.aTr[#ST_IDLE, #ST_WAITRAISE] := "SM_Trans"(C := #ResetRequested, P := 0);
+	
+	#SM.aTr[#ST_WAITRAISE, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#SM.aTr[#ST_WAITRAISE, #ST_WAITFALL] := "SM_Trans"(C := #ResetIn AND NOT #stat.prev.ResetIn, P := 1);
+	
+	#SM.aTr[#ST_WAITFALL, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#SM.aTr[#ST_WAITFALL, #ST_ERRORMIN] := "SM_Trans"(C := NOT #ResetIn AND #stat.prev.ResetIn AND #SM.timState < #TrailingMinimum, P := 1);
+	#SM.aTr[#ST_WAITFALL, #ST_ERRORMAX] := "SM_Trans"(C := #SM.timState > #TrailingMaximum, P := 2);
+	#SM.aTr[#ST_WAITFALL, #ST_RESET] := "SM_Trans"(C := NOT #ResetIn AND #stat.prev.ResetIn, P := 3);
+	
+	#SM.aTr[#ST_ERRORMAX, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#SM.aTr[#ST_ERRORMAX, #ST_WAITFALL] := "SM_Trans"(C := #ResetIn AND NOT #stat.prev.ResetIn, P := 1);
+	
+	#SM.aTr[#ST_ERRORMIN, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#SM.aTr[#ST_ERRORMIN, #ST_WAITFALL] := "SM_Trans"(C := #ResetIn AND NOT #stat.prev.ResetIn, P := 1);
+	
+	#SM.aTr[#ST_RESET, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#SM.aTr[#ST_RESET, #ST_WAITRAISE] := "SM_Trans"(C := true, P := 1);
+	
+	#SM();
+	
+	CASE #SM.iState OF
+	    #ST_IDLE:
+	        #DiagCode := 16#0000;
+	        
+	    #ST_WAITRAISE:
+	        IF #TrailingMaximum < #TrailingMinimum OR #TrailingMinimum < T#100ms THEN
+	            #DiagCode := 16#C000;
+	        END_IF;
+	        
+	        IF #SM.xStateFirstCall AND #ResetIn THEN
+	            #DiagCode := 16#C001;
+	        END_IF;
+	        
+	        IF #DiagCode <> 16#C000 AND #DiagCode <> 16#C001 THEN
+	            #DiagCode := 16#83E2;
+	        END_IF;
+	        
+	    #ST_WAITFALL:
+	        #DiagCode := 16#83F2;
+	        
+	    #ST_RESET:
+	        #DiagCode := 16#8000;
+	        
+	    #ST_ERRORMAX:
+	        #DiagCode := 16#C3E0;
+	        
+	    #ST_ERRORMIN:
+	        #DiagCode := 16#C3F0;
+	        
+	END_CASE;
+	
+	
+	#Ready := #SM.iState <> #ST_IDLE;
+	#ResetOut := #SM.iState = #ST_RESET;
+	#Error := #DiagCode = 16#C000 OR #DiagCode = 16#C001 OR #DiagCode = 16#C3E0 OR #DiagCode = 16#C3F0;
+	
+	
+	#stat.prev.ResetIn := #ResetIn;
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "SF_PSE"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Активация защиты (1 = устройство активно)
+      S_ESPE_In { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_StartReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса при запуске (0 = требуется ручной сброс)
+      S_AutoReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса после срабатывания защиты (0 = требуется ручной сброс)
+      Reset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Сброс защиты (0 => 1)
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Блок активен
+      S_ESPE_Out { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Запрос безопасного состояния
+      ResetRequest { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Требуется сброс
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Ошибка исполнения блока
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   // Диагностический код
+   END_VAR
+
+   VAR 
+      SF_EmergencyStop_Instance { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_EmergencyStop";
+   END_VAR
+
+
+BEGIN
+	#SF_EmergencyStop_Instance(Activate := #Activate,
+	                           S_EstopIn := #S_ESPE_In,
+	                           S_StartReset := #S_StartReset,
+	                           S_AutoReset := #S_AutoReset,
+	                           Reset := #Reset,
+	                           Ready => #Ready,
+	                           S_EstopOut => #S_ESPE_Out,
+	                           SafetyDemand => #SafetyDemand,
+	                           ResetRequest => #ResetRequest,
+	                           Error => #Error,
+	                           DiagCode => #DiagCode);
+	
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "SF_Antivalent"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_ChannelNC { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_ChannelNO { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiscrepancyTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_AntivalentOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+   END_VAR
+
+   VAR 
+      SF_Equivalent_Instance { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_Equivalent";
+   END_VAR
+
+
+BEGIN
+	#SF_Equivalent_Instance(Activate := #Activate,
+	                        S_ChannelA := #S_ChannelNC,
+	                        S_ChannelB := NOT #S_ChannelNO,
+	                        DiscrepancyTime := #DiscrepancyTime,
+	                        Ready => #Ready,
+	                        S_EquivalentOut => #S_AntivalentOut,
+	                        SafetyDemand => #SafetyDemand,
+	                        Error => #Error,
+	                        DiagCode => #DiagCode);
+	
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_ModeSelector"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_TwoHandControlTypeII"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_TwoHandControlTypeIII"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_TestableSafetySensor"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_MutingSeq"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_MutingPar"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_MutingPar_2Sensor"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_EnableSwitch"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_EnableSwitch_2"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_GuardLocking_2"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_GuardLockingSerial"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_Override"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_SafetyRequest"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "_SF_OutControl"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "SF_Guard"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Активация защиты (1 = устройство активно)
+      S_GuardSwitch1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Вход 1 переключателя безопасности
+      S_GuardSwitch2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Вход 2 переключателя безопасности
+      DiscrepancyTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;   // Макс. время различия срабатывания
+      S_StartReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса при запуске (0 = требуется ручной сброс)
+      S_AutoReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса после срабатывания защиты (0 = требуется ручной сброс)
+      Reset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Сброс защиты (0 => 1)
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Блок активен
+      S_GuardOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Безопасное состояние
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Запрос безопасного состояния
+      ResetRequest { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Требуется сброс
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Ошибка исполнения блока
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   // Диагностический код
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         prev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            Reset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+         END_STRUCT;
+      END_STRUCT;
+      SM { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "StateMachine";
+   END_VAR
+
+   VAR CONSTANT 
+      ST_IDLE : Int := 0;
+      ST_INIT : Int := 1;
+      ST_OPENINGSTARTED : Int := 2;
+      ST_GUARDOPENED : Int := 3;
+      ST_WAITSWITCH1 : Int := 4;
+      ST_WAITSWITCH2 : Int := 5;
+      ST_DISCREPANCY : Int := 6;
+      ST_GUARDCLOSED : Int := 7;
+      ST_WAITRESET : Int := 8;
+      ST_NORMAL : Int := 9;
+   END_VAR
+
+
+BEGIN
+	#SM.aTr[#ST_IDLE, #ST_INIT] := "SM_Trans"(C := #Activate, P := 0);
+	
+	#SM.aTr[#ST_INIT, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_INIT, #ST_OPENINGSTARTED] := "SM_Trans"(C := NOT #S_GuardSwitch1 OR NOT #S_GuardSwitch2, P := 1);
+	#SM.aTr[#ST_INIT, #ST_WAITRESET] := "SM_Trans"(C := #S_GuardSwitch1 AND #S_GuardSwitch2 AND NOT #S_StartReset, P := 2);
+	#SM.aTr[#ST_INIT, #ST_NORMAL] := "SM_Trans"(C := #S_GuardSwitch1 AND #S_GuardSwitch2 AND #S_StartReset, P := 3);
+	
+	#SM.aTr[#ST_OPENINGSTARTED, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_OPENINGSTARTED, #ST_GUARDOPENED] := "SM_Trans"(C := NOT #S_GuardSwitch1 AND NOT #S_GuardSwitch2, P := 1);
+	
+	#SM.aTr[#ST_GUARDOPENED, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_GUARDOPENED, #ST_WAITSWITCH2] := "SM_Trans"(C := #S_GuardSwitch1, P := 1);
+	#SM.aTr[#ST_GUARDOPENED, #ST_WAITSWITCH1] := "SM_Trans"(C := #S_GuardSwitch2, P := 2);
+	
+	#SM.aTr[#ST_WAITSWITCH1, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITSWITCH1, #ST_DISCREPANCY] := "SM_Trans"(C := #SM.timState >= #DiscrepancyTime, P := 1);
+	#SM.aTr[#ST_WAITSWITCH1, #ST_OPENINGSTARTED] := "SM_Trans"(C := NOT #S_GuardSwitch2, P := 2);
+	#SM.aTr[#ST_WAITSWITCH1, #ST_GUARDCLOSED] := "SM_Trans"(C := #S_GuardSwitch1 AND #S_GuardSwitch2, P := 3);
+	
+	#SM.aTr[#ST_WAITSWITCH2, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITSWITCH2, #ST_DISCREPANCY] := "SM_Trans"(C := #SM.timState >= #DiscrepancyTime, P := 1);
+	#SM.aTr[#ST_WAITSWITCH2, #ST_OPENINGSTARTED] := "SM_Trans"(C := NOT #S_GuardSwitch1, P := 2);
+	#SM.aTr[#ST_WAITSWITCH2, #ST_GUARDCLOSED] := "SM_Trans"(C := #S_GuardSwitch1 AND #S_GuardSwitch2, P := 3);
+	
+	#SM.aTr[#ST_DISCREPANCY, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_DISCREPANCY, #ST_GUARDOPENED] := "SM_Trans"(C := NOT #S_GuardSwitch1 AND NOT #S_GuardSwitch2, P := 1);
+	
+	#SM.aTr[#ST_GUARDCLOSED, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_GUARDCLOSED, #ST_OPENINGSTARTED] := "SM_Trans"(C := NOT #S_GuardSwitch1 OR NOT #S_GuardSwitch2, P := 1);
+	#SM.aTr[#ST_GUARDCLOSED, #ST_WAITRESET] := "SM_Trans"(C := NOT #S_AutoReset, P := 2);
+	#SM.aTr[#ST_GUARDCLOSED, #ST_NORMAL] := "SM_Trans"(C := #S_AutoReset, P := 3);
+	
+	#SM.aTr[#ST_WAITRESET, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_WAITRESET, #ST_OPENINGSTARTED] := "SM_Trans"(C := NOT #S_GuardSwitch1 OR NOT #S_GuardSwitch2, P := 2);
+	#SM.aTr[#ST_WAITRESET, #ST_NORMAL] := "SM_Trans"(C := #Reset AND NOT #stat.prev.Reset, P := 3);
+	
+	#SM.aTr[#ST_NORMAL, #ST_IDLE] := "SM_Trans"(C := NOT #Activate, P := 0);
+	#SM.aTr[#ST_NORMAL, #ST_OPENINGSTARTED] := "SM_Trans"(C := NOT #S_GuardSwitch1 OR NOT #S_GuardSwitch2, P := 1);
+	
+	
+	#SM();
+	
+	
+	CASE #SM.iState OF
+	    #ST_IDLE:
+	        #DiagCode := 16#0000;
+	        
+	    #ST_NORMAL:
+	        #DiagCode := 16#8000;
+	        
+	    #ST_INIT:
+	        #DiagCode := 16#8001;
+	        
+	    #ST_GUARDCLOSED:
+	        #DiagCode := 16#8002;
+	        
+	    #ST_WAITRESET:
+	        IF #SM.xStateFirstCall AND #Reset THEN
+	            #DiagCode := 16#C001;
+	        END_IF;
+	        
+	        IF #DiagCode <> 16#C001 THEN
+	            #DiagCode := 16#8402;
+	        END_IF;
+	        
+	    #ST_OPENINGSTARTED:
+	        #DiagCode := 16#8802;
+	        
+	    #ST_GUARDOPENED:
+	        #DiagCode := 16#8804;
+	        
+	    #ST_WAITSWITCH2:
+	        #DiagCode := 16#8806;
+	        
+	    #ST_WAITSWITCH1:
+	        #DiagCode := 16#8808;
+	        
+	    #ST_DISCREPANCY:
+	        IF #SM.iStatePrev = #ST_WAITSWITCH2 THEN
+	            #DiagCode := 16#C010;
+	        ELSIF #SM.iStatePrev = #ST_WAITSWITCH1 THEN
+	            #DiagCode := 16#C020;
+	        END_IF;
+	        
+	END_CASE;
+	
+	
+	#Ready := #SM.iState <> #ST_IDLE;
+	#S_GuardOut := #SM.iState = #ST_NORMAL;
+	
+	#SafetyDemand := #SM.iState = #ST_OPENINGSTARTED OR #SM.iState = #ST_GUARDOPENED
+	OR #SM.iState = #ST_WAITSWITCH1 OR #SM.iState = #ST_WAITSWITCH2;
+	
+	#ResetRequest := #DiagCode = 16#8402;
+	#Error := #DiagCode = 16#C001 OR #DiagCode = 16#C010 OR #DiagCode = 16#C020;
+	
+	
+	#stat.prev.Reset := #Reset;
+END_FUNCTION_BLOCK
+
+FUNCTION "@Safety" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+	(*
+	
+	
+	
+	Общие входы:
+	Activate - Активация защиты (1 = устройство активно)
+	S_StartReset - Тип сброса при запуске (0 = требуется ручной сброс)
+	S_AutoReset - Тип сброса после срабатывания защиты (0 = требуется ручной сброс)
+	Reset - Сброс защиты (0 => 1)
+	
+	
+	Общие выходы:
+	Ready - Блок активен
+	SafetyDemand - Запрос безопасного состояния
+	ResetRrequest - Требуется сброс
+	Error - Ошибка исполнения блока
+	DiagCode - Диагностический код
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	*)
+END_FUNCTION
+
