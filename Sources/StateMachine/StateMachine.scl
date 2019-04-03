@@ -1,33 +1,4 @@
-﻿FUNCTION "Error" : Void
-{ S7_Optimized_Access := 'FALSE' }
-VERSION : 0.1
-   VAR_INPUT 
-      Condition : Bool;
-      NewSubfunction : Word;
-      NewErrorId : Word;
-   END_VAR
-
-   VAR_IN_OUT 
-      Error : Bool;
-      ErrorId : DWord;
-   END_VAR
-
-   VAR_TEMP 
-      tmpDw : DWord;
-      tmpDwAt AT tmpDw : Array[0..1] of Word;
-   END_VAR
-
-
-BEGIN
-	IF #Condition AND NOT #Error THEN
-	    #Error := true;
-	    #tmpDwAt[0] := INT_TO_WORD(#NewSubfunction);
-	    #tmpDwAt[1] := #NewErrorId;
-	    #ErrorId := #tmpDw;
-	END_IF;
-END_FUNCTION
-
-FUNCTION_BLOCK "StateMachine"
+﻿FUNCTION_BLOCK "StateMachine"
 { S7_Optimized_Access := 'FALSE' }
 VERSION : 0.1
    VAR_INPUT 
@@ -86,7 +57,9 @@ BEGIN
 	(*
 	TODO - из одного состояния нет переходов с одинаковым приоритетом
 	TODO - обнуление массива переходов при первой инициализации
+	TODO - вход для обнуления массива
 	*)
+	
 	
 	IF NOT #stat.xInitialized THEN
 	    // определяем OB_Class вызывающего блока
@@ -167,58 +140,4 @@ BEGIN
 	    #stat.prev.iState := #iState;
 	END_IF;
 END_FUNCTION_BLOCK
-
-FUNCTION "SM_Trans" : Byte
-{ S7_Optimized_Access := 'FALSE' }
-VERSION : 0.1
-   VAR_INPUT 
-      C : Bool;   // условие перехода
-      P : USInt;   // приоритет (0 - наивысший)
-   END_VAR
-
-   VAR_TEMP 
-      tmp : Struct
-         usiPrio : USInt;
-      END_STRUCT;
-      tmpByte : Byte;
-      tmpByteAt AT tmpByte : Array[0..7] of Bool;
-      tmpOut : Byte;
-      tmpOutAt AT tmpOut : Array[0..7] of Bool;
-   END_VAR
-
-
-BEGIN
-	IF #P >= 15 THEN
-	    #tmp.usiPrio := 15;
-	ELSE
-	    #tmp.usiPrio := #P;
-	END_IF;
-	
-	#tmpByte := USINT_TO_BYTE(#tmp.usiPrio);
-	
-	#tmpOut := #tmpByte;
-	#tmpOutAt[7] := #C;
-	
-	#SM_Trans := #tmpOut;
-END_FUNCTION
-
-FUNCTION "@StateMachine" : Void
-{ S7_Optimized_Access := 'TRUE' }
-VERSION : 0.1
-
-BEGIN
-	(*
-	
-	Экспорт в StateMachine/StateMachine.scl
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	*)
-END_FUNCTION
 

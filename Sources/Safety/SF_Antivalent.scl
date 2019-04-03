@@ -1,0 +1,36 @@
+﻿FUNCTION_BLOCK "SF_Antivalent"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_ChannelNC { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_ChannelNO { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiscrepancyTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_AntivalentOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+   END_VAR
+
+   VAR 
+      SF_Equivalent_Instance { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_Equivalent";
+   END_VAR
+
+
+BEGIN
+	#SF_Equivalent_Instance(Activate := #Activate,
+	                        S_ChannelA := #S_ChannelNC,
+	                        S_ChannelB := NOT #S_ChannelNO,
+	                        DiscrepancyTime := #DiscrepancyTime,
+	                        Ready => #Ready,
+	                        S_EquivalentOut => #S_AntivalentOut,
+	                        SafetyDemand => #SafetyDemand,
+	                        Error => #Error,
+	                        DiagCode => #DiagCode);
+	
+END_FUNCTION_BLOCK
+

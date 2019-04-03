@@ -1,0 +1,9 @@
+﻿TYPE "User_data_type_1"
+VERSION : 0.1
+   STRUCT
+      qwe { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      q { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+   END_STRUCT;
+
+END_TYPE
+

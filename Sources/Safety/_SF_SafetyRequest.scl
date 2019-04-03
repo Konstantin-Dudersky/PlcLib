@@ -1,0 +1,7 @@
+﻿FUNCTION_BLOCK "_SF_SafetyRequest"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+END_FUNCTION_BLOCK
+

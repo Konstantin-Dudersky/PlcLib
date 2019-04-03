@@ -1,0 +1,40 @@
+﻿FUNCTION_BLOCK "SF_PSE"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Активация защиты (1 = устройство активно)
+      S_ESPE_In { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_StartReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса при запуске (0 = требуется ручной сброс)
+      S_AutoReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Тип сброса после срабатывания защиты (0 = требуется ручной сброс)
+      Reset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Сброс защиты (0 => 1)
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Блок активен
+      S_ESPE_Out { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Запрос безопасного состояния
+      ResetRequest { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Требуется сброс
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Ошибка исполнения блока
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   // Диагностический код
+   END_VAR
+
+   VAR 
+      SF_EmergencyStop_Instance { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_EmergencyStop";
+   END_VAR
+
+
+BEGIN
+	#SF_EmergencyStop_Instance(Activate := #Activate,
+	                           S_EstopIn := #S_ESPE_In,
+	                           S_StartReset := #S_StartReset,
+	                           S_AutoReset := #S_AutoReset,
+	                           Reset := #Reset,
+	                           Ready => #Ready,
+	                           S_EstopOut => #S_ESPE_Out,
+	                           SafetyDemand => #SafetyDemand,
+	                           ResetRequest => #ResetRequest,
+	                           Error => #Error,
+	                           DiagCode => #DiagCode);
+	
+END_FUNCTION_BLOCK
+

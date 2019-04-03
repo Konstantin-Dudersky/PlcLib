@@ -1,0 +1,12 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="TiaLibraryExport.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="EXPORT_BASE" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">D:\Git\PlcLib\Sources\</Value>
+    </Setting>
+    <Setting Name="PROJECT_FILE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Users\Konstantin\Documents\Automation\Dev\Dev.ap15_1</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

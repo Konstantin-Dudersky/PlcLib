@@ -1,0 +1,22 @@
+﻿FUNCTION "SF_DiagToOutputs" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      DiagCode : Word;
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready : Bool;
+      SafetyDemand : Bool;
+      ResetRequest : Bool;
+      Error : Bool;
+   END_VAR
+
+
+BEGIN
+	#Ready := #DiagCode.%X15;
+	#SafetyDemand := #DiagCode.%X11;
+	#ResetRequest := #DiagCode.%X10;
+	#Error := #DiagCode.%X14;
+END_FUNCTION
+
