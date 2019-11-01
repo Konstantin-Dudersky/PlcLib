@@ -1,0 +1,20 @@
+﻿FUNCTION "SM_Init" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_IN_OUT 
+      Tr : "SM_udtTransitions";
+   END_VAR
+
+   VAR CONSTANT 
+      MAX_INDEX : Int := 19;
+      LOW_PRIO : Int := 15;
+   END_VAR
+
+
+BEGIN
+	FILL_BLK(IN    := INT_TO_BYTE(#LOW_PRIO),
+	         COUNT := INT_TO_UDINT((#MAX_INDEX + 1) * (#MAX_INDEX + 1)),
+	         OUT   => #Tr.t[0, 0]);
+	
+END_FUNCTION
+

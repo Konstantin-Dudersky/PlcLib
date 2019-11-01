@@ -1,0 +1,10 @@
+﻿TYPE "DG_udtMsgSum"
+VERSION : 0.1
+   STRUCT
+      hmiWord : Word;
+      highest : Int;
+      byRank : Array[0..3] of Int;
+   END_STRUCT;
+
+END_TYPE
+

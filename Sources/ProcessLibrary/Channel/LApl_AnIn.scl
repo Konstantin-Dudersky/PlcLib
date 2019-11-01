@@ -1,0 +1,284 @@
+﻿FUNCTION_BLOCK "LApl_AnIn"
+TITLE = AnIn
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : dooder
+FAMILY : Channel
+VERSION : 0.1
+   VAR_INPUT 
+      PV_In : Int := 0;   // Адрес периферийного значения
+      ScaleHigh : Real := 100.0;   // Конец шкалы измерения
+      ScaleLow : Real;   // Начало шкалы измерения
+      PlcHigh : Real := 27648.0;   // Конец шкалы контроллера; только для режима 5
+      PlcLow : Real := 0.0;   // Начало шкалы контроллера; только для режима 5
+      Feature : DWord := 2#00000000_00000000_00000000_00000000;   // Status of various features
+      NamurOff : Bool;   // 1=NAMUR limits off
+      HighLimit : Real := 21.5;   // High limit of input value(4-20mA)
+      LowLimit : Real := 3.3;   // Low limit of input value(4-20mA)
+      SimOn : Bool;   // 1=Simulation active
+      SimPV_In : Real;   // Simulation value
+      SubsPV_In : Real;   // Substitution value
+      DeltaVal : Real;   // Delta value(PV.value - LastValidValue)
+      CountLim : Int;   // Restart counter limit
+      FlutEn : Bool;   // 1=Fluttersupress enable
+      FlutTmIn : Int;   // Fluttersupress time
+      FrznEn : Bool;   // Enable monitoring for frozen input value (In)
+      FrznTmIn : Int;   // Monitoring time of frozen imput value [s]
+      DelMsgEn : Bool;   // Reserve
+      DelMsgTm : Int;   // Reserve
+      SampleTime : Time := T#100ms;   // Sample Time[s]
+      LowCutOff : Real;   // Low cut off input value
+      Mode : Int := 2;   // Quality and mode
+   END_VAR
+
+   VAR_OUTPUT 
+      Bad : Bool;   // 1=Bad process value
+      PV_Out : "PL_Ana";   // Process value incl. ST
+      ScaleOut : Struct   // Range of process value
+         High : Real;
+         Low : Real;
+      END_STRUCT;
+      PV_HiAct : Bool;   // 1=Input value high limit failure
+      PV_LoAct : Bool;   // 1=Input value low limit failure
+      SimAct : Bool;   // 1=Simulation active
+      ModErr : Bool;   // 1=Higher level failure
+      FrznVal : Bool;   // frozen input value
+      RemMonTm : Time;   // remaining monitoring time
+      ErrorNum : Int := -1;   // Parameter error
+      OosAct : Int;   // Field device out of service, maintenance in pogress
+      PV_LcoAct : Bool;   // 1=Low cut off limit failure
+      msgs : "DG_udtMsgSum";
+   END_VAR
+
+   VAR 
+      stat : Struct
+         lastValidValue : Real;
+         lastButOneValidValue : Real;
+      END_STRUCT;
+      msgWireBreak : "DG_Msg";
+      msgWireShort : "DG_Msg";
+      msgSimulation : "DG_Msg";
+      inst_FeatureBitsReorder : "LApl_Aux_FeatureBitsReorder_obsolete";
+   END_VAR
+
+   VAR_TEMP 
+      signalStatus : Int;   // 0 = Нет ошибок; 1 = Underflow; 2 = Undershoot; 3 = Overshoot; 4 = Overflow
+      tempPvOut : Real;
+   END_VAR
+
+   VAR CONSTANT 
+      MODE6BAD : Real := 0.02;   // Доля диапазона 0..10В, ниже которого регистрируется обрыв провода (Mode=6)
+      ST_UNDERFLOW : Int := 1;   // Обрыв провода
+      ST_UNDERSHOOT : Int := 2;
+      ST_RATED : Int;   // Нормальный дипапзон
+      ST_OVERSHOOT : Int := 3;
+      ST_OVERFLOW : Int := 4;   // Короткое замыкание
+   END_VAR
+
+
+BEGIN
+	(*
+	Библиотека: LApl
+	Тестировано: 
+	    CPU 315-2 PN/DP, Fw V3.2
+	    CPU 1212C DC/DC/Rly, Fw4.1
+	Разработано: TIA Portal v13 Sp1 Upd 9
+	Ограничения: вызов в любых OB
+	Требования:
+	    PLC data types: LApl_AnaVal
+	    S7-300 - загрузочная память - 1220 байт, рабочая память - 1032 байта
+	    S7-1200 - загрузочная память - 14931 байт, рабочая память - 1185 байта
+	Функциональность: 
+	    Блок для масштабирования сигнала с аналогового датчика
+	------------------------------------------------------------------------------------------------------------------------
+	Версии:
+	00.00.01 2016-07-18 (Константин Дудерский)
+	    Первая версия
+	------------------------------------------------------------------------------------------------------------------------
+	Mode - тип датчика:
+	    1 - RTD или термопара;
+	    2 - мА или В однополярный;
+	    3 - мА или В биполярный;
+	    4 - сигнал 4..20мА считывается со входа 0..20мА или 2..10В считывается со входа 0..10В;
+	    5 - задание всех диапазонов (единиц ПЛК и инженерных единиц)
+	    6 - однополярный 0..10В с контролем обрыва провода, если напряжение меньше заданного значения (EXPERIMENTAL)
+	    
+	Feature - расширенная настройка:
+	    5 бит - TODO
+	    10 бит - TODO 
+	    28 бит - TODO
+	    29 бит - TODO
+	    30 бит - 1 = при недостоверном входном значении PV_In, выходное значение PV_Out устанавливается последнему достоверному значению
+	    
+	msgs - аварии:
+	    0 бит - обрыв датчика
+	    1 бит - кз датчика
+	    2 бит - режим симуляции
+	*)
+	
+	#inst_FeatureBitsReorder(FeatureIn := #Feature);
+	
+	CASE #Mode OF
+	    1:  // RTD или термопара
+	        #tempPvOut := INT_TO_REAL(#PV_In) / 10;
+	        // Проверка на выход из диапазона
+	        CASE #PV_In OF
+	            -32768..-2431:
+	                #signalStatus := #ST_UNDERFLOW;
+	            -2430..-2001:
+	                #signalStatus := #ST_UNDERSHOOT;
+	            -2000..8500:
+	                #signalStatus := #ST_RATED;
+	            8501..10000:
+	                #signalStatus := #ST_OVERSHOOT;
+	            10001..32767:
+	                #signalStatus := #ST_OVERFLOW;
+	        END_CASE;
+	        
+	    2:  // мА или В однополярный
+	        #tempPvOut := #ScaleLow + (INT_TO_REAL(#PV_In)) * (#ScaleHigh - #ScaleLow) / 27648;
+	        // Проверка на выход из диапазона
+	        CASE #PV_In OF
+	            -32768..-4865:
+	                #signalStatus := #ST_UNDERFLOW;
+	            -4864..-1:
+	                #signalStatus := #ST_UNDERSHOOT;
+	            0..27648:
+	                #signalStatus := #ST_RATED;
+	            27649..32511:
+	                #signalStatus := #ST_OVERSHOOT;
+	            32512..32767:
+	                #signalStatus := #ST_OVERFLOW;
+	        END_CASE;
+	        
+	    3:  // мА или В биполярный
+	        #tempPvOut := #ScaleLow + (INT_TO_REAL(#PV_In) + 27648) * (#ScaleHigh - #ScaleLow) / 55296;
+	        // Проверка на выход из диапазона
+	        CASE #PV_In OF
+	            -32768..-32513:
+	                #signalStatus := #ST_UNDERSHOOT;
+	            -32512..-27649:
+	                #signalStatus := #ST_UNDERFLOW;
+	            -27648..27648:
+	                #signalStatus := #ST_RATED;
+	            27649..32511:
+	                #signalStatus := #ST_OVERSHOOT;
+	            32512..32767:
+	                #signalStatus := #ST_OVERFLOW;
+	        END_CASE;
+	        
+	    4:  // сигнал 4..20мА считывается со входа 0..20мА
+	        // или сигнал 2..10В считывается со входа 0..10В
+	        #tempPvOut := #ScaleLow + INT_TO_REAL(#PV_In - 5530) * (#ScaleHigh - #ScaleLow) / (27648 - 5530);
+	        // Проверка на выход из диапазона
+	        CASE #PV_In OF
+	            -32768..1637:
+	                #signalStatus := #ST_UNDERFLOW;
+	            1638..5529:
+	                #signalStatus := #ST_UNDERSHOOT;
+	            5530..27648:
+	                #signalStatus := #ST_RATED;
+	            27649..32511:
+	                #signalStatus := #ST_OVERSHOOT;
+	            32512..32767:
+	                #signalStatus := #ST_OVERFLOW;
+	        END_CASE;
+	        
+	    5:  // задание всех диапазонов
+	        #tempPvOut := #ScaleLow + (INT_TO_REAL(#PV_In) - #PlcLow) * (#ScaleHigh - #ScaleLow) / (#PlcHigh - #PlcLow);
+	        // Проверка на выход из диапазона
+	        CASE #PV_In OF
+	            -32768..-4865:
+	                #signalStatus := #ST_UNDERFLOW;
+	            -4864..-1:
+	                #signalStatus := #ST_UNDERSHOOT;
+	            0..27648:
+	                #signalStatus := #ST_RATED;
+	            27649..32511:
+	                #signalStatus := #ST_OVERSHOOT;
+	            32512..32767:
+	                #signalStatus := #ST_OVERFLOW;
+	        END_CASE;
+	        
+	    6:  // однополярный 0..10В с контролем обрыва провода, если напряжение меньше заданного значения
+	        #tempPvOut := #ScaleLow + (INT_TO_REAL(#PV_In) - #PlcLow) * (#ScaleHigh - #ScaleLow) / (#PlcHigh - #PlcLow);
+	        IF (#PV_In >= -32768 AND #PV_In <= REAL_TO_INT(#MODE6BAD * #PlcHigh)) THEN
+	            #signalStatus := #ST_UNDERFLOW;
+	        ELSIF (#PV_In > REAL_TO_INT(#MODE6BAD * #PlcHigh) AND #PV_In <= 27648) THEN
+	            #signalStatus := #ST_RATED;
+	        ELSIF (#PV_In > 27648 AND #PV_In <= 32511) THEN
+	            #signalStatus := #ST_OVERSHOOT;
+	        ELSIF (#PV_In > 32511 AND #PV_In <= 32767) THEN
+	            #signalStatus := #ST_OVERFLOW;
+	        END_IF;
+	        
+	    ELSE
+	        #tempPvOut := 0;
+	        
+	END_CASE;
+	
+	// если ScaleHigh = ScaleLow, выдаем электрическую величину
+	IF #ScaleLow = #ScaleHigh THEN
+	    #tempPvOut := #PV_In;
+	END_IF;
+	
+	// достоверное значение
+	#PV_Out.Value := #tempPvOut;
+	#stat.lastValidValue := #tempPvOut;
+	#PV_Out.ST := 16#80;
+	#PV_LoAct := #signalStatus = #ST_UNDERFLOW;
+	#PV_HiAct := #signalStatus = #ST_OVERFLOW;
+	#Bad := #PV_LoAct OR #PV_HiAct;
+	IF #Bad THEN
+	    // последнее верное значение
+	    IF #inst_FeatureBitsReorder.Bit[30] THEN
+	        #PV_Out.Value := #stat.lastValidValue;
+	    ELSE
+	        #PV_Out.Value := 0;
+	    END_IF;
+	    #PV_Out.ST := 16#0;
+	END_IF;
+	
+	// режим симуляции
+	IF #SimOn THEN
+	    #PV_Out.Value := #SimPV_In;
+	    #PV_Out.ST := 16#60;
+	END_IF;
+	
+	
+	IF #Bad AND #inst_FeatureBitsReorder.Bit[30] THEN
+	    ;
+	END_IF;
+	
+	// запись выходов
+	#ScaleOut.High := #ScaleHigh;
+	#ScaleOut.Low := #ScaleLow;
+	
+	// обработка аварий
+	#msgWireBreak(signal := #signalStatus = #ST_UNDERFLOW,
+	              msgWithAck := false,
+	              msgRank := 1);
+	#msgWireShort(signal := (#signalStatus = #ST_OVERFLOW),
+	              msgWithAck := false,
+	              msgRank := 1);
+	#msgSimulation(signal := #SimOn,
+	               msgWithAck := false,
+	               msgRank := 2);
+	#msgs := "DG_MsgCollect"(maxIndex := 2,
+	                      msg0 := #msgWireBreak.msg,
+	                      msg1 := #msgWireShort.msg,
+	                      msg2 := #msgSimulation.msg,
+	                      msg3 := "MsgConst".nullMsg,
+	                      msg4 := "MsgConst".nullMsg,
+	                      msg5 := "MsgConst".nullMsg,
+	                      msg6 := "MsgConst".nullMsg,
+	                      msg7 := "MsgConst".nullMsg,
+	                      msg8 := "MsgConst".nullMsg,
+	                      msg9 := "MsgConst".nullMsg,
+	                      msg10 := "MsgConst".nullMsg,
+	                      msg11 := "MsgConst".nullMsg,
+	                      msg12 := "MsgConst".nullMsg,
+	                      msg13 := "MsgConst".nullMsg,
+	                      msg14 := "MsgConst".nullMsg,
+	                      msg15 := "MsgConst".nullMsg);
+END_FUNCTION_BLOCK
+

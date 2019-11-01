@@ -1,0 +1,37 @@
+﻿FUNCTION "DG_BlockError" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Sub : Word;
+      SubErrorId : Variant;
+   END_VAR
+
+   VAR_IN_OUT 
+      ErrorId : DWord;
+   END_VAR
+
+   VAR_TEMP 
+      tempDw : DWord;
+      tempW : Word;
+   END_VAR
+
+
+BEGIN
+	IF #ErrorId <> 16#0 THEN
+	    RETURN;
+	END_IF;
+	
+	IF EQ_Type(IN1 := #SubErrorId, IN2 := #tempW) THEN
+	    VariantGet(SRC := #SubErrorId,
+	               DST => #tempDw.%W0);
+	    #tempDw.%W1 := #Sub;
+	    #ErrorId := #tempDw;
+	ELSIF EQ_Type(IN1 := #SubErrorId, IN2 := #tempDw) THEN
+	    VariantGet(SRC := #SubErrorId,
+	               DST => #tempDw);
+	    "WL_SwapWordInDword"(#tempDw);
+	    #tempDw.%W1 := #Sub;
+	    #ErrorId := #tempDw;
+	END_IF;
+END_FUNCTION
+

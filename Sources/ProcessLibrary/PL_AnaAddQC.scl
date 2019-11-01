@@ -1,0 +1,28 @@
+﻿FUNCTION "PL_AnaAddQC" : Real
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Value : Real;
+      QC : USInt;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         Dw : DWord;
+         B : Byte;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	#temp.Dw := REAL_TO_DWORD(#Value);
+	#temp.B := USINT_TO_BYTE(#QC);
+	
+	#temp.Dw.%X0 := #temp.B.%X0;
+	#temp.Dw.%X1 := #temp.B.%X1;
+	#temp.Dw.%X2 := #temp.B.%X2;
+	#temp.Dw.%X3 := #temp.B.%X3;
+	
+	#PL_AnaAddQC := DWORD_TO_REAL(#temp.Dw);
+END_FUNCTION
+

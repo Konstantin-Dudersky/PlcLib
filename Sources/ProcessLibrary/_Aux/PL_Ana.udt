@@ -1,0 +1,10 @@
+﻿TYPE "PL_Ana"
+VERSION : 0.1
+   STRUCT
+      Value : Real;
+      ST : Byte := 16#80;
+      Unit : UInt;
+   END_STRUCT;
+
+END_TYPE
+

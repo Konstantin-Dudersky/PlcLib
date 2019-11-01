@@ -1,0 +1,14 @@
+﻿DATA_BLOCK "PL_GlobalDb"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   STRUCT 
+      AnaVal_noExist : "PL_Ana";
+   END_STRUCT;
+
+
+BEGIN
+   AnaVal_noExist.Value := 0.0;
+   AnaVal_noExist.ST := 16#FF;
+
+END_DATA_BLOCK
+

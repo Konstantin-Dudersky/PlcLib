@@ -1,0 +1,181 @@
+﻿FUNCTION_BLOCK "SM_StateMachine"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      SafeState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      SafeStateAfterRestart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT RETAIN
+      State { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      StatePrev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      StateNext { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+   END_VAR
+   VAR_OUTPUT 
+      StateFirstCall { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      StateLastCall { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+   VAR_OUTPUT RETAIN
+      StateTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+   END_VAR
+   VAR_OUTPUT 
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      ErrorId { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
+   END_VAR
+
+   VAR_IN_OUT 
+      Tr : "SM_udtTransitions";
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         initialized { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      END_STRUCT;
+   END_VAR
+   VAR RETAIN
+      statRet { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         prev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            State { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+         END_STRUCT;
+         stateNext { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      END_STRUCT;
+   END_VAR
+   VAR 
+      InstOBInfo { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SYS_OBInfo";
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         transCond : Bool;
+         transPrio : USInt;
+         bestPrio : USInt;
+         duplicate : Struct
+            arr : Array[0..#LOW_PRIO] of Bool;
+            found : Bool;
+         END_STRUCT;
+      END_STRUCT;
+      i : Int;
+      j : Int;
+      tempBy : Byte;
+      tempW : Word;
+   END_VAR
+
+   VAR CONSTANT 
+      MAX_INDEX : Int := 19;
+      LOW_PRIO : Int := 15;
+      ERID_SAME_PRIO : Word := 16#8000;   // Multiple transitions with the same priority from one state
+   END_VAR
+
+
+BEGIN
+	(*
+	
+	========================================================================================================================
+	ErrorID:
+	16#1 - general error:
+	    16#8000 - Multiple transitions with the same priority from one state
+	16#2 - ObInfo
+	*)
+	
+	REGION ObInfo
+	    #InstOBInfo();
+	    
+	    IF #InstOBInfo.Error THEN
+	        "DG_BlockError"(Sub        := 16#2,
+	                        SubErrorId := #InstOBInfo.ErrorID,
+	                        ErrorId    := #ErrorId);
+	    END_IF;
+	    
+	    IF #InstOBInfo.ObStart THEN
+	        #stat.initialized := false;
+	    END_IF;
+	END_REGION
+	
+	
+	REGION Init
+	    IF NOT #stat.initialized THEN
+	        
+	        // check same priority from one state
+	        #temp.duplicate.found := false;
+	        FOR #i := 0 TO #MAX_INDEX DO
+	            
+	            #tempW := 16#0;
+	            SCATTER(IN  := #tempW,
+	                    OUT => #temp.duplicate.arr);
+	            
+	            FOR #j := 0 TO #MAX_INDEX DO
+	                #tempBy := #Tr.t[#i, #j];
+	                #tempBy.%X7 := 0;
+	                #temp.transPrio := BYTE_TO_USINT(#tempBy);
+	                
+	                IF #temp.transPrio = #LOW_PRIO THEN
+	                    CONTINUE;
+	                ELSIF #temp.duplicate.arr[#temp.transPrio] THEN
+	                    // found duplicate
+	                    #tempW := #ERID_SAME_PRIO;
+	                    "DG_BlockError"(Sub        := 16#1,
+	                                    SubErrorId := #tempW,
+	                                    ErrorId    := #ErrorId);
+	                    #temp.duplicate.found := true;
+	                    EXIT;
+	                ELSE
+	                    #temp.duplicate.arr[#temp.transPrio] := true;
+	                END_IF;
+	            END_FOR;
+	            
+	            IF #temp.duplicate.found THEN
+	                EXIT;
+	            END_IF;
+	        END_FOR;
+	        
+	        // go to safe state
+	        IF #SafeStateAfterRestart THEN
+	            #State := #SafeState;
+	            #statRet.stateNext := #SafeState;
+	        END_IF;
+	        
+	        #stat.initialized := true;
+	    END_IF;
+	END_REGION
+	
+	
+	IF #State = #statRet.stateNext THEN
+	    
+	    // check transitions
+	    #temp.bestPrio := INT_TO_USINT(#LOW_PRIO);
+	    
+	    FOR #i := 0 TO #MAX_INDEX DO
+	        #tempBy := #Tr.t[#State, #i];
+	        #temp.transCond := #tempBy.%X7;
+	        #tempBy.%X7 := 0;
+	        #temp.transPrio := BYTE_TO_USINT(#tempBy);
+	        
+	        IF #temp.transCond AND #temp.transPrio < #temp.bestPrio THEN
+	            #statRet.stateNext := #i;
+	            #temp.bestPrio := #temp.transPrio;
+	        END_IF;
+	    END_FOR;
+	    
+	    #StateTime += #InstOBInfo.SampleTime;
+	ELSE
+	    // transition to next state
+	    #State := #statRet.stateNext;
+	    
+	    #StateTime := T#0ms;
+	END_IF;
+	
+	#StateFirstCall := #State <> #statRet.prev.State;
+	IF #StateFirstCall THEN
+	    #StatePrev := #statRet.prev.State;
+	END_IF;
+	
+	#StateLastCall := #State <> #statRet.stateNext;
+	IF #StateLastCall THEN
+	    #StateNext := #statRet.stateNext;
+	END_IF;
+	
+	#statRet.prev.State := #State;
+	
+	#Error := #ErrorId <> 16#0;
+END_FUNCTION_BLOCK
+

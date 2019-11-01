@@ -8,5 +8,8 @@
     <Setting Name="PROJECT_FILE" Type="System.String" Scope="User">
       <Value Profile="(Default)">C:\Users\Konstantin\Documents\Automation\Dev\Dev.ap15_1</Value>
     </Setting>
+    <Setting Name="PLC_NAME" Type="System.String" Scope="User">
+      <Value Profile="(Default)">S7-1200_dev</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

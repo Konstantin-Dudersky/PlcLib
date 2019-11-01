@@ -1,0 +1,12 @@
+﻿FUNCTION "SM_GetStateTime" : DInt
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_IN_OUT 
+      inst : "typeSM";
+   END_VAR
+
+
+BEGIN
+	#SM_GetStateTime := #inst.stateTime;
+END_FUNCTION
+

@@ -1,0 +1,23 @@
+﻿FUNCTION "LApl_StruAnOu" : Void
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : dooder
+VERSION : 0.1
+//Merging a variable of the REAL data type and a signal status into an analog process value.
+//
+   VAR_INPUT 
+      Value : Real;   // Analog value
+      ST : Byte;   // Signal status
+   END_VAR
+
+   VAR_OUTPUT 
+      Bad : Bool;   // 1 = (ST =16#0 to ST3F)
+      Out : "PL_Ana";   // Analog value with structure
+   END_VAR
+
+
+BEGIN
+	#Out.Value := #Value;
+	#Out.ST := #ST;
+	#Bad := (#ST = 16#00) OR (#ST = 16#28);
+END_FUNCTION
+

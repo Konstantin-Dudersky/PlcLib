@@ -1,0 +1,19 @@
+﻿FUNCTION "SM_NewState" : Void
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      newState : Int;
+   END_VAR
+
+   VAR_IN_OUT 
+      inst : "typeSM";
+   END_VAR
+
+
+BEGIN
+	#inst.old.state := #inst.state;
+	#inst.state := #newState;
+	#inst.stateTime := T#0ms;
+	#inst.stateChanged := true;
+END_FUNCTION
+

@@ -1,0 +1,73 @@
+﻿FUNCTION_BLOCK "LApl_TimerP"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      SampleTime : Time := T#100ms;   // Sampling Time [s]
+      Ti : Time;   // Time [s]
+      Mode : Int := 2;   // 0=Pulse,1=ExtP,2=OnDel,3=RetOn-D,4=Off-D
+      Reset : Bool;   // 1=Reset
+      In : Bool;   // Value input
+   END_VAR
+
+   VAR_OUTPUT 
+      Out : Bool;   // Output
+      InvOut : Bool;   // inverted output Out
+      TimeRemaining : Time;   // Time remaining [s]
+      ErrorNum : Int := -1;   // Current error number
+   END_VAR
+
+   VAR 
+      stat : Struct
+         state : "typeSM";
+      END_STRUCT;
+   END_VAR
+
+   VAR CONSTANT 
+      ST_2_OFF : Int;
+      ST_2_DELAY : Int := 1;
+      ST_2_ON : Int := 2;
+   END_VAR
+
+
+BEGIN
+	CASE #Mode OF
+	    2:  // ON delay
+	        CASE "SM_Case"(sampleTime := #SampleTime, inst := #stat.state) OF
+	            #ST_2_OFF:
+	                IF #In AND NOT #Reset THEN
+	                    "SM_NewState"(newState := #ST_2_DELAY,
+	                                  inst := #stat.state);
+	                END_IF;
+	                
+	                #TimeRemaining := T#0ms;
+	                
+	            #ST_2_DELAY:
+	                IF NOT #In OR #Reset THEN
+	                    "SM_NewState"(newState := #ST_2_OFF,
+	                                  inst := #stat.state);
+	                ELSIF "SM_TimeGE"(value := #Ti, inst := #stat.state) THEN
+	                    "SM_NewState"(newState := #ST_2_ON,
+	                                  inst := #stat.state);
+	                END_IF;
+	                
+	                #TimeRemaining := #Ti - "SM_GetStateTime"(#stat.state);
+	                
+	            #ST_2_ON:
+	                IF NOT #In OR #Reset THEN
+	                    "SM_NewState"(newState := #ST_2_OFF,
+	                                  inst := #stat.state);
+	                END_IF;
+	                
+	                #TimeRemaining := T#0ms;
+	                
+	        END_CASE;
+	        
+	        #Out := "SM_StateE"(state := #ST_2_ON, inst := #stat.state);
+	        #InvOut := NOT #Out;
+	        
+	    ELSE
+	        #ErrorNum := 1;
+	END_CASE;
+	
+END_FUNCTION_BLOCK
+

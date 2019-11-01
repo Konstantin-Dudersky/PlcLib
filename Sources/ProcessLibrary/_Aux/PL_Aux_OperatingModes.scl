@@ -1,0 +1,243 @@
+﻿FUNCTION_BLOCK "PL_Aux_OperatingModes"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      FirstScan { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      AdvCoEn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      AdvCoModSP { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;
+      AdvCoMstrOn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      AdvCoOn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      AutModLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      LocalLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      LocalSetting { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int := 0;
+      ManModLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      ModLiOp { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      OosLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      InBumplessTransfer { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Feat_bit0 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Feat_bit1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Feat_bit4 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Feat_bit10 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Feat_bit17 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Feat_bit21 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      OS_Perm_Bit0 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      OS_Perm_Bit1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      OS_Perm_Bit2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      OS_Perm_Bit3 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT RETAIN
+      AutAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      LocalAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      ManAct_OnAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      OosAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+   END_VAR
+   VAR_OUTPUT 
+      mode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      OS_PermOut_Bit0 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      OS_PermOut_Bit1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      OS_PermOut_Bit2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      OS_PermOut_Bit3 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      xOutStatusWord1x15 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      xInvalidMode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      xBumpLessTransfer { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      ErrorNum { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+   END_VAR
+
+   VAR_IN_OUT 
+      AutModOp { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      LocalOp { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      ManModOp_OnOp { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      OosOp { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         modBeforeLocal { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+         modBeforeProgram { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      END_STRUCT;
+      SxOosLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SxLastMode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      Tr : "SM_udtTransitions";
+      xOSPerAuto : Bool;
+      xOSPerMan : Bool;
+      xOSPerLocal : Bool;
+      xOSPerOOS : Bool;
+      xAutoAct : Bool;
+      xManAct : Bool;
+   END_VAR
+
+   VAR CONSTANT 
+      ST_AUT : Int;
+      ST_MAN : Int := 1;
+      ST_LOCAL : Int := 2;
+      ST_OOS : Int := 3;
+      ST_PROGRAM : Int := 4;
+   END_VAR
+
+
+BEGIN
+	(*
+	Выходы:
+	mode - режим работы:
+	    0 = автоматический
+	    1 = ручной
+	    2 = местный
+	    3 = вывод из эксплуатации
+	    4 = программный
+	*)
+	
+	#xOSPerAuto := #OS_Perm_Bit0;
+	#xOSPerMan := #OS_Perm_Bit1;
+	#xOSPerLocal := #OS_Perm_Bit2;
+	#xOSPerOOS := #OS_Perm_Bit3 AND #ManAct_OnAct.Value AND NOT #ModLiOp.Value;
+	
+	#xOutStatusWord1x15 := false;
+	#xInvalidMode := false;
+	
+	IF #OosAct.Value OR #ManAct_OnAct.Value THEN
+	    // переключение в режим "Ручной" оператором
+	    IF #ManModOp_OnOp THEN
+	        #ManAct_OnAct.Value := true;
+	        #OosAct.Value := false;
+	    // переключение в режим "Не работает"
+	    ELSIF (#OosLi.Value AND #Feat_bit1 AND NOT #SxOosLi) OR #OosOp THEN
+	        #ManAct_OnAct.Value := false;
+	        #OosAct.Value := true;
+	    END_IF;
+	    #SxOosLi := #OosLi.Value;
+	END_IF;
+	
+	
+	IF #FirstScan THEN
+	    // переводим в ручной режим при перезагрузке
+	    IF NOT (#Feat_bit0 OR #OosAct.Value) THEN
+	        #ManAct_OnAct.Value := true;
+	        #AutAct.Value := false;
+	        #LocalAct.Value := false;
+	        #OosAct.Value := false;
+	    END_IF;
+	    
+	    IF #AutAct.Value THEN
+	        #xOSPerAuto := false;
+	    END_IF;
+	    
+	    IF #ManAct_OnAct.Value THEN
+	        #xOSPerMan := false;
+	    END_IF;
+	END_IF;
+	
+	IF NOT #OosAct.Value AND NOT #FirstScan THEN
+	    #xAutoAct := #AutAct.Value;
+	    #xManAct := #ManAct_OnAct.Value;
+	    
+	    IF #LocalSetting < 0 OR #LocalSetting > 4 THEN
+	        #ErrorNum := 41;
+	    ELSIF (#LocalSetting = 0 OR #LocalSetting = 3 OR #LocalSetting = 4) AND #LocalLi.Value THEN
+	        #ErrorNum := 42;
+	    END_IF;
+	    
+	    // запрет переключения в автоматический режим
+	    IF #AutAct.Value OR #ModLiOp.Value OR ((#LocalSetting = 1 OR #LocalSetting = 2) AND #LocalLi.Value) THEN
+	        #xOSPerAuto := false;
+	    END_IF;
+	    
+	    // запрет переключения в ручной режим
+	    IF #ManAct_OnAct.Value OR #ModLiOp.Value OR ((#LocalSetting = 1 OR #LocalSetting = 2) AND #LocalLi.Value) THEN
+	        #xOSPerMan := false;
+	    END_IF;
+	    
+	    // запрет переключения в местный режим
+	    IF #LocalAct.Value OR #ModLiOp.Value OR (#LocalSetting <> 3 AND #LocalSetting <> 4) THEN
+	        #xOSPerLocal := false;
+	    END_IF;
+	    
+	    IF (((#LocalSetting = 3 OR #LocalSetting = 4) AND #LocalOp) AND NOT #ModLiOp.Value)
+	        OR ((#LocalSetting = 1 OR #LocalSetting = 2) AND #LocalLi.Value) THEN
+	        // переключение в местный режим
+	        #LocalAct.Value := true;
+	        #xManAct := false;
+	        #xAutoAct := false;
+	    ELSIF (#ModLiOp.Value AND #AutModLi.Value AND (NOT #Feat_bit4 AND #ManModLi.Value)) AND NOT #LocalAct.Value THEN
+	        #xInvalidMode := true;
+	        #ErrorNum := 51;
+	    ELSIF NOT ((#LocalAct.Value AND #ModLiOp.Value) AND (#LocalSetting = 3 OR #LocalSetting = 4)) THEN
+	        
+	        IF (#ModLiOp.Value AND #AutModLi.Value) OR (NOT #ModLiOp.Value AND #AutModOp) THEN
+	            // переключение в автоматический режим
+	            #xAutoAct := true;
+	            #xManAct := false;
+	            #SxLastMode := true;
+	        END_IF;
+	        
+	        IF (((NOT #Feat_bit4 AND #ManModLi.Value) OR (NOT #AutModLi.Value AND #Feat_bit4)) AND #ModLiOp.Value)
+	            OR (NOT #ModLiOp.Value AND #ManModOp_OnOp) THEN
+	            // переключение в ручной режим
+	            #xManAct := true;
+	            #xAutoAct := false;
+	            #SxLastMode := false;
+	        END_IF;
+	    END_IF;
+	    
+	    IF ((NOT #ModLiOp.Value AND #Feat_bit21) OR NOT #Feat_bit21) AND #Feat_bit17 THEN
+	        #xBumpLessTransfer := #InBumplessTransfer;
+	    ELSE
+	        #xBumpLessTransfer := false;
+	    END_IF;
+	    
+	    IF NOT #AutAct.Value AND #xAutoAct THEN
+	        #xOutStatusWord1x15 := #xBumpLessTransfer;
+	        IF #xOutStatusWord1x15 THEN
+	            IF NOT #LocalAct.Value THEN
+	                #xAutoAct := false;
+	                #xManAct := true;
+	                #SxLastMode := false;
+	                IF NOT #ModLiOp.Value THEN
+	                    #xOSPerAuto := #OS_Perm_Bit0;
+	                    #xOSPerMan := false;
+	                END_IF;
+	            ELSE
+	                #xAutoAct := false;
+	                IF NOT #ModLiOp.Value THEN
+	                    #xOSPerAuto := #OS_Perm_Bit0;
+	                    #xOSPerMan := #OS_Perm_Bit1;
+	                    #xOSPerLocal := false;
+	                END_IF;
+	            END_IF;
+	        END_IF;
+	    END_IF;
+	    
+	    IF ((NOT #LocalLi.Value AND (#LocalSetting = 1 OR #LocalSetting = 2))
+	        OR ((#xAutoAct OR #xManAct) AND (#LocalSetting = 3 OR #LocalSetting = 4))
+	        OR (#LocalSetting = 0)) AND #LocalAct.Value THEN
+	        #LocalAct.Value := false;
+	        IF NOT #xAutoAct AND NOT #xManAct THEN
+	            IF NOT #xBumpLessTransfer AND #Feat_bit4 THEN
+	                #xAutoAct := #SxLastMode;
+	                #xManAct := NOT #xAutoAct;
+	            ELSE
+	                #xManAct := true;
+	                #xAutoAct := false;
+	                #SxLastMode := false;
+	            END_IF;
+	        END_IF;
+	    END_IF;
+	    #AutAct.Value := #xAutoAct;
+	    #ManAct_OnAct.Value := #xManAct;
+	END_IF;
+	
+	#OS_PermOut_Bit0 := NOT #xBumpLessTransfer AND #xOSPerAuto;
+	#OS_PermOut_Bit1 := #xOSPerMan;
+	#OS_PermOut_Bit2 := #xOSPerLocal;
+	#OS_PermOut_Bit3 := #xOSPerOOS;
+	
+	// сброс команд оператора
+	#AutModOp := false;
+	#LocalOp := false;
+	#ManModOp_OnOp := false;
+	#OosOp := false;
+END_FUNCTION_BLOCK
+

@@ -1,0 +1,9 @@
+﻿DATA_BLOCK "PL"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+"PL_General"
+
+BEGIN
+
+END_DATA_BLOCK
+

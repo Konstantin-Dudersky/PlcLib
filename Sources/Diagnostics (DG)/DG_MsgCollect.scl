@@ -1,0 +1,107 @@
+﻿FUNCTION "DG_MsgCollect" : "DG_udtMsgSum"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      maxIndex : Int;
+   END_VAR
+
+   VAR_IN_OUT 
+      msg0 : "DG_udtMsg";
+      msg1 : "DG_udtMsg";
+      msg2 : "DG_udtMsg";
+      msg3 : "DG_udtMsg";
+      msg4 : "DG_udtMsg";
+      msg5 : "DG_udtMsg";
+      msg6 : "DG_udtMsg";
+      msg7 : "DG_udtMsg";
+      msg8 : "DG_udtMsg";
+      msg9 : "DG_udtMsg";
+      msg10 : "DG_udtMsg";
+      msg11 : "DG_udtMsg";
+      msg12 : "DG_udtMsg";
+      msg13 : "DG_udtMsg";
+      msg14 : "DG_udtMsg";
+      msg15 : "DG_udtMsg";
+   END_VAR
+
+   VAR_TEMP 
+      msgs : Array[0..15] of "DG_udtMsg";
+      i : Int;
+      tiAmount : Int;
+      tempMsgWord : Word;
+      msgBits AT tempMsgWord : Array[0..15] of Bool;
+   END_VAR
+
+
+BEGIN
+	(*
+	Библиотека: LTia
+	Тестировано:
+	Разработано: TIA Portal v13 Sp1 Upd 9
+	Ограничения: вызов в любых OB
+	Требования:
+	    PLC data type: typeMsg
+	    S7-300: загрузочная память - 1394 байт, рабочая память - 1146 байта
+	    S7-1200: загрузочная память - 10651 байт, рабочая память - 618 байта
+	Функциональность:
+	    Обработка массива из 16 сообщений:
+	    - формирование word для отображения на hmi
+	    - определяет, есть ли общая авария/предупреждение, несквитированная авария/предупреждение
+	------------------------------------------------------------------------------------------------------------------------
+	Версии:
+	01.00.00 2016-06-01 (Константин Дудерский)
+	    Первая версия
+	------------------------------------------------------------------------------------------------------------------------
+	*)
+	
+	// определяем кол-во проверяемых сообщений
+	IF #maxIndex > 15 THEN
+	    #tiAmount := 15;
+	ELSIF #maxIndex < 0 THEN
+	    #tiAmount := 0;
+	ELSE
+	    #tiAmount := #maxIndex;
+	END_IF;
+	
+	// создаём массив сообщений
+	#msgs[0] := #msg0;
+	#msgs[1] := #msg1;
+	#msgs[2] := #msg2;
+	#msgs[3] := #msg3;
+	#msgs[4] := #msg4;
+	#msgs[5] := #msg5;
+	#msgs[6] := #msg6;
+	#msgs[7] := #msg7;
+	#msgs[8] := #msg8;
+	#msgs[9] := #msg9;
+	#msgs[10] := #msg10;
+	#msgs[11] := #msg11;
+	#msgs[12] := #msg12;
+	#msgs[13] := #msg13;
+	#msgs[14] := #msg14;
+	#msgs[15] := #msg15;
+	
+	#DG_MsgCollect.highest := 0;
+	#DG_MsgCollect.byRank[0] := 0;
+	#DG_MsgCollect.byRank[1] := 0;
+	#DG_MsgCollect.byRank[2] := 0;
+	#DG_MsgCollect.byRank[3] := 0;
+	FOR #i := 0 TO #tiAmount DO
+	    IF #msgs[#i].state > 0 THEN
+	        // определяем наиболее приоритетный класс сообщения
+	        IF #DG_MsgCollect.highest = 0 THEN
+	            #DG_MsgCollect.highest := #msgs[#i].rank * 10 + #msgs[#i].state;
+	        ELSE
+	            #DG_MsgCollect.highest := MIN_INT(IN1 := #DG_MsgCollect.highest, IN2 := #msgs[#i].rank * 10 + #msgs[#i].state);
+	        END_IF;
+	        // подсчитываем кол-во сообщений
+	        #DG_MsgCollect.byRank[#msgs[#i].rank - 1] := #DG_MsgCollect.byRank[#msgs[#i].rank - 1] + 1;
+	    END_IF;
+	    #msgBits[#i] := #msgs[#i].state > 0;
+	END_FOR;
+	FOR #i := #tiAmount + 1 TO 15 DO
+	    #msgBits[#i] := false;
+	END_FOR;
+	#DG_MsgCollect.hmiWord := #tempMsgWord;
+END_FUNCTION
+

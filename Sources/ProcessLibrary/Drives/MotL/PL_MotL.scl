@@ -1,0 +1,1482 @@
+﻿FUNCTION_BLOCK "PL_MotL"
+TITLE = MotL
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+//Двигатель
+   VAR_INPUT 
+      StartAut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = запуск в автоматическом режиме
+      StopAut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = останов в автоматическом режиме
+      StartMan { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // 1 = запуск в ручном режиме
+      StopMan { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // 1 = останов в ручном режиме
+      ModLiOp { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      AutModOp { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      ManModOp { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool := true;   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      AutModLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      ManModLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      LocalLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      LocalOp { S7_HiddenAssignment := 'Hide'} : Bool;   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      MS_RelOp { ExternalVisible := 'False'} : Bool;   // Operator input for MS Release, 1: MS release requirement
+      OosOp { S7_HiddenAssignment := 'Hide'} : Bool;   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      OosLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      StartLocal { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      StopLocal { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Источник команд переключения режимов: 0 = Op, 1 = Li
+   END_VAR
+   VAR_INPUT RETAIN
+      LocalSetting { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'Hide'} : Int;   // Настройка местного режима
+   END_VAR
+   VAR_INPUT 
+      FbkRun { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = сигнал обратной связи
+   END_VAR
+   VAR_INPUT RETAIN
+      Monitor { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool := true;   // 1=Monitor ON, 0=Monitor OFF: Feedback Monitor
+      MonTiStatic { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Time := T#3s;   // Контроль обратной связи при остановке или работе
+      MonTiDynamic { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Time := T#3s;   // Контроль обратной связи при остановке или работе
+      MonTiDyStop { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Time := T#3s;   // Контроль обратной связи при остановке (TODO)
+      IdleTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'Hide'} : Time := T#5s;   // Время ожидания перезапуска
+      PulseWidth { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'Hide'} : Time := T#3s;   // Ширина импульса команд P_Start и P_Stop
+   END_VAR
+   VAR_INPUT 
+      WarnTiMan { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'Hide'} : Time;   // Предпусковая сигнализация в ручном режиме
+      WarnTiAut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'Hide'} : Time;   // Предпусковая сигнализация в автоматическом режиме
+      RapidStp { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // 1 = Motor Rapid Stop command
+      RstOp { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // Operator Reset Signal
+      RstLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'Show'} : "PL_Dig";   // 1 = сброс аварий
+      BypProt { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // Bypass Protection in Sim/Local Modes
+      Trip { ExternalVisible := 'False'} : "PL_Dig";   // 1=Motor Healthy State, 0=Motor Tripped Signal
+      Permit { ExternalVisible := 'False'} : "PL_DigIntlock";   // 1=Permit is OK, 0=Not Allowed to Activate Motor
+      Perm_En { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;   // 1=Permit enabled, 0=Permit disabled
+      Intlock { ExternalVisible := 'False'} : "PL_DigIntlock";   // 0 = блокировка без сброса активна
+      Intl_En { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;   // 1 = вход intlock активен
+      Protect { ExternalVisible := 'False'} : "PL_DigIntlock";   // 0 = блокировка со сбросом активна
+      Prot_En { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;   // 1 = вход protect активен
+      StartForce { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'HideIfNoParamAssigned'} : "PL_Dig";   // 1 = принудительный запуск
+      StopForce { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'HideIfNoParamAssigned'} : "PL_Dig";   // 1 = принудительный останов
+      StartChnST { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Output channel state of Start
+      MsgLock { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Inhibit process message
+      SimLiOp { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'HideIfNoParamAssigned'} : "PL_Dig";   // Simulation on/off via 0 = Operator, 1 = Interconnection or SFC
+      SimOnLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'HideIfNoParamAssigned'} : "PL_Dig";   // 1 = Simulation activated by interconnection or SFC (controlled by SimLiOp = 1)
+      SimOn { ExternalVisible := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // Simulation On/Off
+      BatchEn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // Enable Remote Operation of Controller by Batch Recipe
+      Occupied { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'Hide'} : Bool;   // Occupied by Batch
+      FaultExt { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = внешняя авария
+      CSF { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = control system fault
+      SimAV { ExternalVisible := 'False'} : Real;   // AV Simulation Value, tracks when not in simulation
+      SimAV_Li { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Ana";   // Linkable simulation value AV
+      AV_AH_Lim { ExternalVisible := 'False'} : Real := 95.0;   // AV - High Alarm Limit
+      AV_WH_Lim { ExternalVisible := 'False'} : Real := 90.0;   // AV - High Warning Limit
+      AV_TH_Lim { ExternalVisible := 'False'} : Real := 85.0;   // AV - High Tolerance Limit
+      AV_TL_Lim { ExternalVisible := 'False'} : Real := 15.0;   // AV - Low Tolerance Limit
+      AV_WL_Lim { ExternalVisible := 'False'} : Real := 10.0;   // AV - Low Warning Limit
+      AV_AL_Lim { ExternalVisible := 'False'} : Real := 5.0;   // AV - Low Alarm Limit
+      AV_Hyst { ExternalVisible := 'False'} : Real := 1.0;   // AV - Hysteresis
+      AV { ExternalVisible := 'False'} : Real;   // Process Value (controlled variable)
+      ExtMsg1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'HideIfNoParamAssigned'} : "PL_Dig";   // External Message 1
+      ExtMsg2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'HideIfNoParamAssigned'} : "PL_Dig";   // External Message 2
+      ExtMsg3 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'HideIfNoParamAssigned'} : "PL_Dig";   // External Message 3
+   END_VAR
+   VAR_INPUT RETAIN
+      OS_Perm { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct   // Operator Permissions
+         Bit0 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit3 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit4 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit5 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit6 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit7 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit8 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit9 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit10 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit11 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit12 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit13 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit14 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit15 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit16 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit17 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit18 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit19 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit20 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit21 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit22 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit23 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit24 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit25 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit26 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit27 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit28 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit29 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit30 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+         Bit31 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      END_STRUCT;
+      Feature { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; CFC_Visible := 'false'; S7_HiddenAssignment := 'Hide'} : Struct   // Status of various features
+         Bit0 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 0 = Start up with defined initializing in OB100; 1 = keep last stored values
+         Bit1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = OosLi can switch to Out of Service
+         Bit2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Resetting the commands for changing the mode
+         Bit3 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Enabling resetting of commands for the control settings
+         Bit4 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 0 = Button mode; 1 = Switch mode
+         Bit5 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit6 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit7 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit8 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit9 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Resetting interlock via automatic input signals in automatic mode
+         Bit10 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Switch to the last setting of Auto/Man mode when local mode is exited
+         Bit11 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Tracking feedback signals in simulation mode with delay
+         Bit12 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit13 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Separate monitoring time for motor stopping
+         Bit14 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Enable rapid stop
+         Bit15 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit16 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit17 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Enabling bumpless changeover to automatic mode for valves and motors
+         Bit18 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Motor, valve or dosage switch to External error if CSF is active
+         Bit19 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Resettable even if Protection or Motor Protection is active
+         Bit20 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Disable calculation of impulse controls in local settings 2 & 4
+         Bit21 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Enabling bumpless changeover to automatic mode only for operator
+         Bit22 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Enable message state actualization
+         Bit23 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Limits disabled in faceplate
+         Bit24 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Local authorization active
+         Bit25 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Suppress all messages if MsgLock = 1
+         Bit26 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Reset switching points if switching to Out of Service
+         Bit27 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Interlock monitoring in faceplate standard view if LocalSetting = 2 or 4
+         Bit28 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Disable switching points if MsgLock =1
+         Bit29 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Signal Value =0 (0 active) if limit is violated
+         Bit30 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Resetting interlock via input signal in autom. via faceplate in manual mode
+         Bit31 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Resetting Protection/Errors in manual mode
+      END_STRUCT;
+      Feature2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; CFC_Visible := 'false'; S7_HiddenAssignment := 'Hide'} : Struct   // Status of various features
+         Bit0 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Separate evaluation of bypassed and simulated interlock signals
+         Bit3 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = In case of invalid input command the control changes to rest position
+         Bit4 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 0 = Button mode; 1 = Switch mode (Local Command)
+         Bit5 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1=Ignore bad signal state in interlock signals
+         Bit6 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit7 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit8 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Forcing in local mode
+         Bit9 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit10 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Block goes to rest position if one of the automatic command is bad
+         Bit11 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit12 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit13 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit14 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit15 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit16 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit17 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit18 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit19 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit20 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit21 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit22 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit23 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit24 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit25 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit26 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit27 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit28 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit29 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit30 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+         Bit31 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reserved
+      END_STRUCT;
+   END_VAR
+
+   VAR_OUTPUT 
+      MonDynErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = авария по обратной связи при изменении режима работы
+      MonDynStopErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = авария по обратной связи при остановке
+      MonStaErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = авария по обратной связи при остановке или запуске
+      CurrMon { ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;   // 1 = текущее время контроля обратной связи (TODO)
+      R_StpAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Активен сигнал быстрого останова (TODO)
+      LockAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Блокировка или Trip активна
+      GrpErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = суммарная авария
+      RdyToStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Готов к запуску (TODO)
+      RdyToReset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Готов к сбросу аварий (TODO)
+      WarnAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = предпусковая сигнализация
+      Start { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = сигнал на запуск двигателя
+      P_Start { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = импульсный сигнал на запуск
+      P_Stop { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 0 = импульсный сигнал на останов
+      P_Rst { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // Сброс, активен один цикл (TODO)
+      LocalAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = активен местный режим
+      AutAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = активен автоматический режим
+      ManAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = активен ручной режим
+      OosAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = вывод из эксплуатации
+      FbkRunOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = есть сигнал обратной связи
+      Run { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1= двигатель запущен
+      Stop { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";   // 1 = двигатель остановлен
+      AV_Out { ExternalVisible := 'False'; ExternalWritable := 'False'; S7_HiddenAssignment := 'HideIfNoParamAssigned'} : "PL_Ana";   // Additional analog value output
+      OS_PermOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; CFC_Visible := 'false'} : DWord := DWORD#16#FFFF_FFFF;   // Operator Permission: Output for OS
+      OS_PermLog { ExternalVisible := 'False'; ExternalWritable := 'False'; CFC_Visible := 'false'} : DWord;   // Operator Permission: Output for OS
+      OpSt_Out { ExternalVisible := 'False'; ExternalWritable := 'False'; CFC_Visible := 'false'} : DWord;   // Enabled operator stations
+      ST_Worst { ExternalVisible := 'False'; ExternalWritable := 'False'; CFC_Visible := 'false'} : Byte := BYTE#16#80;   // Worst Signal Status
+      AutoST { ExternalVisible := 'False'; ExternalWritable := 'False'; CFC_Visible := 'false'} : Byte := BYTE#16#80;   // Worst Signal Status of the automatic commands
+      Status1 { ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   // Status1 Word
+      Status2 { ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   // Status2 Word
+      Status3 { ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   // Status3 Word
+      Status4 { ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   // Status4 Word
+      Status5 { ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   // Status5 Word
+      ErrorNum { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int := -1;   // (TODO)
+      EventState { ExternalVisible := 'False'} : "EventState";
+   END_VAR
+
+   VAR 
+      "ocm~AutModOp~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 1;
+      "ocm~AutModOp~string_1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Auto
+      "ocm~BlockIcon" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 1;
+      "ocm~Comment" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Comment
+      "ocm~LocalOp~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 1;
+      "ocm~LocalOp~string_1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Local
+      "ocm~ManModOp~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 1;
+      "ocm~ManModOp~string_1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Manual
+      "ocm~Monitor~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 2;
+      "ocm~MonTiDyStop~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 2;
+      "ocm~MonTiDynamic~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 2;
+      "ocm~MonTiStatic~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 2;
+      "ocm~OosOp~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 2;
+      "ocm~OosOp~string_1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Out of service
+      "ocm~RapidStp~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 1;
+      "ocm~RapidStp~string_1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Rapid stop
+      "osm~RstOp~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 1;
+      "ocm~RstOp~string_1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Reset
+      "ocm~StartMan~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 1;
+      "ocm~StartMan~string_1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Start
+      "ocm~StopMan~op_level" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 1;
+      "ocm~StopMan~string_1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Stop
+      Msg1 { ExternalVisible := 'False'; ExternalWritable := 'False'} : "Event";
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         prev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            StartAut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            StopAut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            StartLocal { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            StopLocal { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            Start { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            RstLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            P_RstLocal { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reset in local
+            P_RstForce { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reset in forcing
+            P_RstAutMan { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reset in auto or manual mode
+            OldIdleTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+            CmdStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            FbkRun { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            LocalLi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+         END_STRUCT;
+         Err { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            GrpErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            Trip { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            FaultExt { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            CSF { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            MonDynErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            MonDynStopErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            MonStaErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            Permit { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            Intlock { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+            Protect { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+         END_STRUCT;
+         CmdStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+         MonTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+         ResetNeededMonErr { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+         ResetNeededTrip { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Reset is needed for trip signal
+         ResetNeededFaultExtCSF { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Reset is needed for FaultExt or CSF
+         ResetNeededProtect { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Reset is needed for protect signal
+         ResetNeededRapidStop { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Reset is needed for rapid stop signal
+         RstProtectDone { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reset Protection done with P_Rst
+         RstTripDone { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Reset Trip done with P_Rst
+         MonTiDynamicProcess { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Variable for Time Monitoring in process
+         MonTiStatic { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Static monitoring error
+         StopIdleAct { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Motor Stopped and in Idle state
+         WaitToFbkStop { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Wait to fbk stop for idletime
+         IdleTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+         WarnTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+         PulseTimeStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+         PulseTimeStop { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+      END_STRUCT;
+      instOM { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Aux_OperatingModes";
+      OBInfo { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SYS_OBInfo";
+      instPermit { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "Lock";
+      instIntlock { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "Lock";
+      instProtect { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "Lock";
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         Bo : Bool;
+         Dw : DWord;
+         I : Int;
+         SimAct : Bool;   // Симуляция активна
+         ForceInputActive : Bool;   // Forcing is active
+         InvalidCommand : Bool;   // Variable for Invalid command
+         Interlocked : Bool;   // Variable to check if valve is interlocked
+         BadAutST : Bool;   // one of the automatic commands is bad
+         xBumpLessTransfer : Bool;
+         MonErr : Bool;
+         Trip_N : Bool;
+         FaultExtCSF : Bool;
+         FbkOK : Bool;   // feedback conditions are ok
+         OpResetRequest : Bool;   // Reset via faceplate depends on mode and featurebits
+         LiResetRequest : Bool;   // Reset via input signals depends on mode and featurebits
+         ResetEnabled : Bool;   // Reset is possible
+         OSPerRst : Bool;   // 1 = Operator enabled to reset the valve
+         OSPerStart : Bool;
+         OSPerStop : Bool;
+         P_RstLocal : Bool;   // 1 = Local reset
+         P_RstForce : Bool;   // 1 = Force reset
+         P_RstAutMan : Bool;   // 1 = Automatic manual reset
+         stcInST : "udtSelST16";
+         MonSafePosErr : Bool;   // Any monitoring error and MonSafePos activated -> force valve to safe position
+         SimOnFbkDelay : Bool;
+      END_STRUCT;
+      i : Int;
+      tempDig : "PL_Dig";
+   END_VAR
+
+   VAR CONSTANT 
+      ST_STOP : Int;
+      ST_PREWARN : Int := 1;
+      ST_STARTING : Int := 2;
+      ST_RUN : Int := 3;
+      ST_STOPPING : Int := 4;
+      ST_ALARM : Int := 5;
+      ST_IDLE : Int := 6;
+      ST_FORCESTART : Int := 7;
+   END_VAR
+
+
+BEGIN
+	(*
+	
+	OS_Perm:
+	Bit8    Bool    false   Non-retain  False   False   False   False   1 = Operator can define or change the monitoring time for startup
+	Bit9    Bool    false   Non-retain  False   False   False   False   1 = Operator can define the monitoring time for the status
+	Bit10   Bool    false   Non-retain  False   False   False   False   1 = Operator can enable the monitoring time function (Bit 8 - 9) 
+	Bit11   Bool    false   Non-retain  False   False   False   False   1 = Operator can activate the Simulation function
+	Bit12   Bool    false   Non-retain  False   False   False   False   1 = Operator can activate the Release for maintenance function
+	Bit13   Bool    false   Non-retain  False   False   False   False   1 = Operator can change the high limit (AV) for the alarm
+	Bit14   Bool    false   Non-retain  False   False   False   False   1 = Operator can change the high limit (AV) for the warning
+	Bit15   Bool    false   Non-retain  False   False   False   False   1 = Operator can change the high limit (AV) for the tolerance
+	Bit16   Bool    false   Non-retain  False   False   False   False   1 = Operator can change the limit (AV) for hysteresis
+	Bit17   Bool    false   Non-retain  False   False   False   False   1 = Operator can lower the limit (AV) for the alarm 
+	Bit18   Bool    false   Non-retain  False   False   False   False   1 = Operator can lower the limit (AV) for the warning
+	Bit19   Bool    false   Non-retain  False   False   False   False   1 = Operator can lower the limit (AV) for the tolerance
+	Bit20   Bool    false   Non-retain  False   False   False   False   1 = Operator can activate / deactivate messages via AV_AH_MsgEn
+	Bit21   Bool    false   Non-retain  False   False   False   False   1 = Operator can activate / deactivate messages via AV_WH_MsgEn
+	Bit22   Bool    false   Non-retain  False   False   False   False   1 = Operator can activate / deactivate messages via AV_TH_MsgEn
+	Bit23   Bool    false   Non-retain  False   False   False   False   1 = Operator can activate / deactivate messages via AV_TL_MsgEn
+	Bit24   Bool    false   Non-retain  False   False   False   False   1 = Operator can activate / deactivate messages via AV_WL_MsgEn
+	Bit25   Bool    false   Non-retain  False   False   False   False   1 = Operator can activate / deactivate messages via AV_AL_MsgEn
+	Bit26   Bool    false   Non-retain  False   False   False   False   1 = Operator can change the simulation value SimAV
+	Bit27   Bool    false   Non-retain  False   False   False   False   Not used
+	Bit28   Bool    false   Non-retain  False   False   False   False   Not used
+	Bit29   Bool    false   Non-retain  False   False   False   False   Not used
+	Bit30   Bool    false   Non-retain  False   False   False   False   1 = Operator can define the monitoring time for stopping
+	
+	
+	Status2:
+	Bit0    Bool    false   Non-retain  False   False   False   False   MsgLock
+	Bit1    Bool    false   Non-retain  False   False   False   False   AV_AH_Act.Value
+	Bit2    Bool    false   Non-retain  False   False   False   False   AV_WH_Act.Value
+	Bit3    Bool    false   Non-retain  False   False   False   False   AV_TH_Act.Value
+	Bit4    Bool    false   Non-retain  False   False   False   False   AV_TL_Act.Value
+	Bit5    Bool    false   Non-retain  False   False   False   False   AV_WL_Act.Value
+	Bit6    Bool    false   Non-retain  False   False   False   False   AV_AL_Act.Value
+	Bit7    Bool    false   Non-retain  False   False   False   False   AV_AH_En or Feature.Bit23
+	Bit8    Bool    false   Non-retain  False   False   False   False   AV_WH_En or Feature.Bit23
+	Bit9    Bool    false   Non-retain  False   False   False   False   AV_TH_En or Feature.Bit23
+	Bit10   Bool    false   Non-retain  False   False   False   False   AV_TL_En or Feature.Bit23
+	Bit11   Bool    false   Non-retain  False   False   False   False   AV_WL_En or Feature.Bit23
+	Bit12   Bool    false   Non-retain  False   False   False   False   AV_AL_En or Feature.Bit23
+	Bit13   Bool    false   Non-retain  False   False   False   False   AV_AH_MsgEn
+	Bit14   Bool    false   Non-retain  False   False   False   False   AV_WH_MsgEn
+	Bit15   Bool    false   Non-retain  False   False   False   False   AV_TH_MsgEn
+	Bit16   Bool    false   Non-retain  False   False   False   False   AV_TL_MsgEn
+	Bit17   Bool    false   Non-retain  False   False   False   False   AV_WL_MsgEn
+	Bit18   Bool    false   Non-retain  False   False   False   False   AV_AL_MsgEn
+	Bit19   Bool    false   Non-retain  False   False   False   False   1 = No impact of input signals on "local mode" with LocalSetting = 2 or 4
+	Bit20   Bool    false   Non-retain  False   False   False   False   Motor is stopped
+	Bit21   Bool    false   Non-retain  False   False   False   False   Motor is stopping
+	Bit22   Bool    false   Non-retain  False   False   False   False   Motor is staring
+	Bit23   Bool    false   Non-retain  False   False   False   False   Motor is running
+	Bit24   Bool    false   Non-retain  False   False   False   False   Error in motor
+	Bit25   Bool    false   Non-retain  False   False   False   False   1 = Input parameter StartChnST is interconnected
+	Bit26   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit27   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit28   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit29   Bool    false   Non-retain  False   False   False   False   reserve
+	
+	
+	Status3:
+	Bit0    Bool    false   Non-retain  False   False   False   False   Delay of the AV_AH_Lim message
+	Bit1    Bool    false   Non-retain  False   False   False   False   Delay of the AV_WH_Lim message
+	Bit2    Bool    false   Non-retain  False   False   False   False   Delay of the AV_TH_Lim message
+	Bit3    Bool    false   Non-retain  False   False   False   False   Delay of the AV_TL_Lim message
+	Bit4    Bool    false   Non-retain  False   False   False   False   Delay of the AV_WL_Lim message
+	Bit5    Bool    false   Non-retain  False   False   False   False   Delay of the AV_AL_Lim message
+	Bit6    Bool    false   Non-retain  False   False   False   False   Collection of message delays
+	Bit7    Bool    false   Non-retain  False   False   False   False   reserve
+	Bit8    Bool    false   Non-retain  False   False   False   False   reserve
+	Bit9    Bool    false   Non-retain  False   False   False   False   reserve
+	Bit10   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit14   Bool    false   Non-retain  False   False   False   False   Feature2.Bit2: Separate bypass signal
+	Bit15   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit16   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit17   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit18   Bool    false   Non-retain  False   False   False   False   SimLiOp.Value
+	Bit19   Bool    false   Non-retain  False   False   False   False   1 = Enabled for rapid stop
+	Bit20   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit21   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit22   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit26   Bool    false   Non-retain  False   False   False   False   Show automatic preview in the standard view
+	Bit27   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit28   Bool    false   Non-retain  False   False   False   False   GrpErr.Value
+	Bit29   Bool    false   Non-retain  False   False   False   False   RdyToStart.Value
+	Bit30   Bool    false   Non-retain  False   False   False   False   Auxiliary value 1 visible
+	Bit31   Bool    false   Non-retain  False   False   False   False   Auxiliary value 2 visible
+	
+	
+	Status4
+	Bit0    Bool    false   Non-retain  False   False   False   False   Effective signal 1 of the message block connected via EventTsIn
+	Bit1    Bool    false   Non-retain  False   False   False   False   Effective signal 2 of the message block connected via EventTsIn
+	Bit2    Bool    false   Non-retain  False   False   False   False   Effective signal 3 of the message block connected via EventTsIn
+	Bit3    Bool    false   Non-retain  False   False   False   False   Effective signal 4 of the message block connected via EventTsIn
+	Bit4    Bool    false   Non-retain  False   False   False   False   Effective signal 5 of the message block connected via EventTsIn
+	Bit5    Bool    false   Non-retain  False   False   False   False   Effective signal 6 of the message block connected via EventTsIn
+	Bit6    Bool    false   Non-retain  False   False   False   False   Effective signal 7 of the message block connected via EventTsIn
+	Bit7    Bool    false   Non-retain  False   False   False   False   Effective signal 8 of the message block connected via EventTsIn
+	Bit8    Bool    false   Non-retain  False   False   False   False   AV not connected
+	Bit9    Bool    false   Non-retain  False   False   False   False   Motor protection display (Trip.Status <> 16#F)
+	Bit10   Bool    false   Non-retain  False   False   False   False   1=Input parameter FbkRun is connected
+	Bit11   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit12   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit13   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit14   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit15   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit16   Bool    false   Non-retain  False   False   False   False   Effective signal 9 of the message block connected via EventTsIn
+	Bit17   Bool    false   Non-retain  False   False   False   False   Effective signal 10 of the message block connected via EventTsIn
+	Bit18   Bool    false   Non-retain  False   False   False   False   Effective signal 11 of the message block connected via EventTsIn
+	Bit19   Bool    false   Non-retain  False   False   False   False   Effective signal 12 of the message block connected via EventTsIn
+	Bit20   Bool    false   Non-retain  False   False   False   False   Effective signal 13 of the message block connected via EventTsIn
+	Bit21   Bool    false   Non-retain  False   False   False   False   Effective signal 14 of the message block connected via EventTsIn
+	Bit22   Bool    false   Non-retain  False   False   False   False   Effective signal 15 of the message block connected via EventTsIn
+	Bit23   Bool    false   Non-retain  False   False   False   False   Effective signal 16 of the message block connected via EventTsIn
+	Bit24   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit25   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit26   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit27   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit28   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit29   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit30   Bool    false   Non-retain  False   False   False   False   reserve
+	Bit31   Bool    false   Non-retain  False   False   False   False   Feature.Bit13
+	
+	
+	Status5
+	Bit0    Bool    false   Non-retain  True    False   False   False   Effective signal 1 of the message block connected via EventTs2In
+	Bit1    Bool    false   Non-retain  True    False   False   False   Effective signal 2 of the message block connected via EventTs2In
+	Bit2    Bool    false   Non-retain  True    False   False   False   Effective signal 3 of the message block connected via EventTs2In
+	Bit3    Bool    false   Non-retain  True    False   False   False   Effective signal 4 of the message block connected via EventTs2In
+	Bit4    Bool    false   Non-retain  True    False   False   False   Effective signal 5 of the message block connected via EventTs2In
+	Bit5    Bool    false   Non-retain  True    False   False   False   Effective signal 6 of the message block connected via EventTs2In
+	Bit6    Bool    false   Non-retain  True    False   False   False   Effective signal 7 of the message block connected via EventTs2In
+	Bit7    Bool    false   Non-retain  True    False   False   False   Effective signal 8 of the message block connected via EventTs2In
+	Bit8    Bool    false   Non-retain  True    False   False   False   Effective signal 9 of the message block connected via EventTs2In
+	Bit9    Bool    false   Non-retain  True    False   False   False   Effective signal 10 of the message block connected via EventTs2In
+	Bit10   Bool    false   Non-retain  True    False   False   False   Effective signal 11 of the message block connected via EventTs2In
+	Bit11   Bool    false   Non-retain  True    False   False   False   Effective signal 12 of the message block connected via EventTs2In
+	Bit12   Bool    false   Non-retain  True    False   False   False   Effective signal 13 of the message block connected via EventTs2In
+	Bit13   Bool    false   Non-retain  True    False   False   False   Effective signal 14 of the message block connected via EventTs2In
+	Bit14   Bool    false   Non-retain  True    False   False   False   Effective signal 15 of the message block connected via EventTs2In
+	Bit15   Bool    false   Non-retain  True    False   False   False   Effective signal 16 of the message block connected via EventTs2In
+	Bit16   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit17   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit18   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit19   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit20   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit21   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit22   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit23   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit24   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit25   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit26   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit27   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit28   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit29   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit30   Bool    false   Non-retain  True    False   False   False   reserve
+	Bit31   Bool    false   Non-retain  True    False   False   False   reserve
+	*)
+	
+	
+	#OBInfo();
+	
+	#CurrMon := T#0ms;
+	
+	// one of the automatic commands is bad
+	#temp.BadAutST := (#StartAut.ST = 16#0 OR #StartAut.ST = 16#28 OR #StopAut.ST = 16#0 OR #StopAut.ST = 16#28) AND #Feature2.Bit10;
+	
+	// simulation active
+	#temp.SimAct := (NOT #SimLiOp.Value AND #SimOn) OR (#SimOnLi.Value AND #SimLiOp.Value);
+	
+	// переключение режимов работы
+	#instOM(FirstScan := #OBInfo.FirstScan,
+	        AdvCoEn := false,
+	        AdvCoModSP := 0.0,
+	        AdvCoMstrOn := false,
+	        AdvCoOn := false,
+	        AutModLi := #AutModLi,
+	        LocalLi := #LocalLi,
+	        LocalSetting := #LocalSetting,
+	        ManModLi := #ManModLi,
+	        ModLiOp := #ModLiOp,
+	        OosLi := #OosLi,
+	        InBumplessTransfer := NOT (((#StartAut.Value = #Start.Value) AND #Feature.Bit4)
+	        OR (NOT #Feature.Bit4 AND ((NOT #Start.Value) = #StopAut.Value) AND (#Start.Value = #StartAut.Value))
+	        OR (NOT #Feature.Bit4 AND NOT #StopAut.Value AND NOT #StartAut.Value)
+	        OR (NOT #Feature.Bit4 AND #StopAut.Value AND #StartAut.Value)),
+	        Feat_bit0 := #Feature.Bit0,
+	        Feat_bit1 := #Feature.Bit1,
+	        Feat_bit4 := #Feature.Bit4,
+	        Feat_bit10 := #Feature.Bit10,
+	        Feat_bit17 := #Feature.Bit17,
+	        Feat_bit21 := #Feature.Bit21,
+	        OS_Perm_Bit0 := #OS_Perm.Bit0,
+	        OS_Perm_Bit1 := #OS_Perm.Bit1,
+	        OS_Perm_Bit2 := #OS_Perm.Bit2,
+	        OS_Perm_Bit3 := #OS_Perm.Bit3,
+	        AutModOp := #AutModOp,
+	        LocalOp := #LocalOp,
+	        ManModOp_OnOp := #ManModOp,
+	        OosOp := #OosOp,
+	        AutAct => #AutAct,
+	        LocalAct => #LocalAct,
+	        ManAct_OnAct => #ManAct,
+	        OosAct => #OosAct);
+	
+	#tempDig.Value := false;
+	#tempDig.ST := 16#80;
+	
+	#temp.OSPerStop := #OS_Perm.Bit4;
+	#temp.OSPerStart := #OS_Perm.Bit5;
+	#temp.OSPerRst := #OS_Perm.Bit7;
+	
+	// обратная связь в порядке
+	#temp.FbkOK := (#Start.Value AND #FbkRunOut.Value) OR (NOT #Start.Value AND NOT #FbkRunOut.Value);
+	
+	#P_Rst.Value := false;
+	
+	// форсирование активно
+	#temp.ForceInputActive := (#StartForce.Value OR #StopForce.Value)
+	AND ((#LocalAct.Value AND #Feature2.Bit8 AND (#LocalSetting = 1 OR #LocalSetting = 3)) OR NOT #LocalAct.Value);
+	
+	#instPermit(Lock_En := #Perm_En,
+	            Feature := #Feature,
+	            Feature2 := #Feature2,
+	            Lock := #Permit);
+	
+	#instIntlock(Lock_En := #Intl_En,
+	             Feature := #Feature,
+	             Feature2 := #Feature2,
+	             Lock := #Intlock);
+	
+	#instProtect(Lock_En := #Prot_En,
+	             Feature := #Feature,
+	             Feature2 := #Feature2,
+	             Lock := #Protect);
+	
+	#temp.Trip_N := NOT #Trip.Value OR (#Trip.ST = 16#0) OR (#Trip.ST = 16#28); // effective value of Trip
+	#temp.FaultExtCSF := (#Feature.Bit18 AND #CSF.Value) OR #FaultExt.Value;
+	IF #OBInfo.FirstScan THEN
+	    #temp.Trip_N := false;
+	END_IF;
+	#temp.MonErr := #MonDynErr.Value OR #MonDynStopErr.Value OR #MonStaErr.Value;
+	
+	
+	IF #OBInfo.FirstScan THEN
+	    IF NOT (#Feature.Bit0 OR #OosAct.Value) THEN
+	        #GrpErr := #tempDig;
+	        #RdyToStart := #tempDig;
+	        
+	        #Start.Value := false;
+	        
+	        #MonDynErr.Value := false;
+	        #MonDynStopErr.Value := false;
+	        #MonStaErr.Value := false;
+	        #stat.MonTiDynamicProcess := false;
+	        #stat.MonTiStatic := false;
+	        #stat.MonTime := #MonTiDynamic;
+	        IF #Feature.Bit13 AND #FbkRunOut.Value THEN
+	            #stat.MonTime := #MonTiDyStop;
+	        END_IF;
+	        
+	        #stat.ResetNeededMonErr := false;
+	        #stat.ResetNeededProtect := false;
+	        #stat.ResetNeededFaultExtCSF := false;
+	        #stat.ResetNeededTrip := false;
+	        
+	        #WarnAct := #tempDig;
+	        #stat.StopIdleAct := false;
+	        #stat.WaitToFbkStop := false;
+	    END_IF;
+	    
+	    #stat.prev.P_RstLocal := false;
+	    #stat.prev.P_RstForce := false;
+	    #stat.prev.P_RstAutMan := false;
+	    #stat.RstProtectDone := false;
+	    #stat.RstTripDone := false;
+	    #ErrorNum := 0;
+	END_IF;
+	
+	
+	IF NOT #OosAct.Value AND #OBInfo.ObCycle THEN
+	    
+	    // блокировка активна
+	    #temp.Interlocked := (#instIntlock.OutLock_N OR #instProtect.OutLock_N OR #stat.ResetNeededProtect
+	    OR ((NOT #Start.Value AND #instPermit.OutLock_N) AND (NOT #FbkRun.Value OR #temp.MonErr)))
+	    AND NOT ((#LocalAct.Value OR #temp.SimAct) AND #BypProt);
+	    
+	    // разрешение оператору остановить
+	    IF NOT #stat.CmdStart OR #AutAct.Value OR #LocalAct.Value OR #temp.Interlocked
+	        OR #temp.Trip_N OR #temp.FaultExtCSF OR #stat.ResetNeededMonErr
+	        OR #stat.ResetNeededTrip OR #stat.ResetNeededFaultExtCSF THEN
+	        #temp.OSPerStop := false;
+	    END_IF;
+	    
+	    // разрешение оператору запустить
+	    IF #stat.CmdStart OR #AutAct.Value OR #LocalAct.Value OR #temp.Interlocked
+	        OR #temp.Trip_N OR #temp.FaultExtCSF OR #stat.StopIdleAct OR #stat.WaitToFbkStop
+	        OR #R_StpAct.Value OR #stat.ResetNeededMonErr OR #temp.MonErr
+	        OR #stat.ResetNeededTrip OR #stat.ResetNeededFaultExtCSF THEN
+	        #temp.OSPerStart := false;
+	    END_IF;
+	    
+	    REGION Errors
+	        // требуется сброс защитной блокировки
+	        IF NOT ((#temp.SimAct OR #LocalAct.Value) AND #BypProt) AND #instProtect.OutLock_N
+	            AND NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value) THEN
+	            #stat.ResetNeededProtect := true;
+	        ELSIF ((NOT #Prot_En OR ((#temp.SimAct OR #LocalAct.Value) AND #BypProt))
+	            OR ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value)) AND #stat.ResetNeededProtect THEN
+	            #stat.ResetNeededProtect := false;
+	            #P_Rst.Value := true;
+	        END_IF;
+	        
+	        // требуется сброс защиты двигателя
+	        IF NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value) AND #temp.Trip_N THEN
+	            #stat.ResetNeededTrip := true;
+	        ELSIF #stat.ResetNeededTrip AND #LocalAct.Value AND (#LocalSetting = 2 OR #LocalSetting = 4) THEN
+	            #stat.ResetNeededTrip := false;
+	            #P_Rst.Value := true;
+	        END_IF;
+	        
+	        // требуется сброс внешней аварии
+	        IF NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value) AND #temp.FaultExtCSF THEN
+	            #stat.ResetNeededFaultExtCSF := true;
+	        ELSIF #stat.ResetNeededFaultExtCSF AND #LocalAct.Value AND (#LocalSetting = 2 OR #LocalSetting = 4) THEN
+	            #stat.ResetNeededFaultExtCSF := false;
+	            #P_Rst.Value := true;
+	        END_IF;
+	        
+	        // перезагрузка в заблокированном состоянии
+	        IF (#stat.RstProtectDone OR #stat.RstTripDone) AND #Feature.Bit19 THEN
+	            IF NOT #instProtect.OutLock_N AND #stat.RstProtectDone THEN
+	                #stat.ResetNeededProtect := false;
+	            END_IF;
+	            IF NOT #temp.Trip_N AND #stat.RstTripDone THEN
+	                #stat.ResetNeededTrip := false;
+	            END_IF;
+	        END_IF;
+	        
+	        IF NOT #instProtect.OutLock_N THEN
+	            #stat.RstProtectDone := false;
+	        END_IF;
+	        
+	        IF NOT #temp.Trip_N THEN
+	            #stat.RstTripDone := false;
+	        END_IF;
+	        
+	        // требуется сброс Экстренного останова
+	        IF #R_StpAct.Value THEN
+	            #stat.ResetNeededRapidStop := true;
+	        END_IF;
+	        
+	        // требуется сброс контроля
+	        IF (#MonDynErr.Value OR #MonDynStopErr.Value OR #MonStaErr.Value) AND #Monitor AND NOT #temp.ForceInputActive AND
+	            NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value) THEN
+	            #stat.ResetNeededMonErr := true;
+	        ELSIF (NOT #Monitor OR #temp.ForceInputActive OR ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value))
+	            AND #stat.ResetNeededMonErr THEN
+	            #stat.ResetNeededMonErr := false;
+	        END_IF;
+	        
+	        // Reset via faceplate depends on mode and featurebits
+	        #temp.OpResetRequest := (NOT #Feature.Bit30 AND #AutAct.Value) OR (#ManAct.Value AND #Feature.Bit31);
+	        // Reset via input signals depends on mode and featurebits
+	        #temp.LiResetRequest := (#ManAct.Value AND #Feature.Bit31 AND NOT #Feature.Bit30) OR #AutAct.Value;
+	        //Reset is possible
+	        #temp.ResetEnabled := (((#stat.ResetNeededProtect OR #stat.ResetNeededMonErr OR #stat.ResetNeededTrip OR #stat.ResetNeededFaultExtCSF)
+	        AND (#temp.OpResetRequest OR #temp.LiResetRequest OR #LocalAct.Value)) OR #stat.ResetNeededRapidStop)
+	        AND (NOT #instProtect.OutLock_N OR #Feature.Bit19) AND (NOT #temp.Trip_N OR #Feature.Bit19)
+	        AND #temp.FbkOK AND NOT #temp.FaultExtCSF;
+	        
+	        IF ((NOT #stat.prev.RstLi AND #RstLi.Value) OR #RstOp) AND #R_StpAct.Value AND NOT #FbkRunOut.Value THEN
+	            IF NOT ((#LocalSetting = 1 OR #LocalSetting = 3) AND #LocalAct.Value) THEN
+	                #stat.ResetNeededMonErr := false;
+	            END_IF;
+	            #stat.ResetNeededRapidStop := false;
+	            #R_StpAct.Value := false;
+	            #P_Rst.Value := true;
+	        END_IF;
+	        
+	        #temp.P_RstLocal := false;
+	        #temp.P_RstForce := false;
+	        #temp.P_RstAutMan := false;
+	        
+	        IF NOT #temp.ForceInputActive AND #LocalAct.Value THEN
+	            // сброс ошибок в местном режиме
+	            
+	            IF #LocalSetting = 1 OR #LocalSetting = 3 THEN
+	                IF #StopLocal.Value AND #temp.FbkOK AND NOT #temp.InvalidCommand THEN
+	                    #temp.P_RstLocal := #temp.ResetEnabled;
+	                    #stat.ResetNeededMonErr := false;
+	                    #stat.ResetNeededProtect := false;
+	                    #stat.ResetNeededFaultExtCSF := #temp.FaultExtCSF;
+	                END_IF;
+	                
+	                IF NOT #stat.prev.StopLocal AND #StopLocal.Value AND #temp.FbkOK AND NOT #temp.InvalidCommand THEN
+	                    #temp.P_RstLocal := #temp.ResetEnabled;
+	                    #stat.ResetNeededTrip := #temp.Trip_N;
+	                END_IF;
+	            END_IF;
+	            
+	        ELSIF NOT #R_StpAct.Value AND #temp.ForceInputActive THEN
+	            // режим форсирования
+	            
+	            #temp.P_RstForce := #temp.ResetEnabled;
+	            #temp.ResetEnabled := false;
+	            #stat.ResetNeededMonErr := false;
+	            #stat.ResetNeededProtect := false;
+	            #stat.ResetNeededTrip := false;
+	            #stat.ResetNeededFaultExtCSF := false;
+	            
+	        ELSIF ((#RstOp AND #temp.OpResetRequest) OR (NOT #stat.prev.RstLi AND #RstLi.Value AND #temp.LiResetRequest)) AND #temp.ResetEnabled THEN
+	            // сброс оператором или через подключение
+	            
+	            #P_Rst.Value := true;
+	            #temp.ResetEnabled := false;
+	            #stat.ResetNeededMonErr := false;
+	            #stat.ResetNeededProtect := false;
+	            #stat.ResetNeededTrip := false;
+	            #stat.ResetNeededFaultExtCSF := false;
+	            
+	        ELSIF NOT #temp.OpResetRequest AND NOT #temp.LiResetRequest THEN
+	            
+	            #temp.P_RstAutMan := true;
+	            #temp.ResetEnabled := false;
+	            #stat.ResetNeededMonErr := false;
+	            #stat.ResetNeededProtect := false;
+	            #stat.ResetNeededTrip := false;
+	            #stat.ResetNeededFaultExtCSF := false;
+	        END_IF;
+	        
+	        // сброс
+	        IF ((NOT #stat.prev.P_RstLocal AND #temp.P_RstLocal) OR (NOT #stat.prev.P_RstForce AND #temp.P_RstForce))
+	            OR (NOT #stat.prev.P_RstAutMan AND #temp.P_RstAutMan) THEN
+	            #P_Rst.Value := true;
+	        END_IF;
+	        
+	        IF #P_Rst.Value AND #Feature.Bit19 THEN
+	            IF #instProtect.OutLock_N THEN
+	                #stat.RstProtectDone := true;
+	            END_IF;
+	            
+	            IF #temp.Trip_N THEN
+	                #stat.RstTripDone := true;
+	            END_IF;
+	        END_IF;
+	        
+	        // сохраняем для след. цикла
+	        #stat.prev.P_RstLocal := #temp.P_RstLocal;
+	        #stat.prev.P_RstForce := #temp.P_RstForce;
+	        #stat.prev.P_RstAutMan := #temp.P_RstAutMan;
+	        
+	        // сброс ошибок в автоматическом режиме через изменение сигналов управления
+	        IF #Feature.Bit9 THEN
+	            IF NOT #stat.prev.StartAut AND #StartAut.Value AND #AutAct.Value AND #temp.ResetEnabled THEN
+	                #P_Rst.Value := true;
+	                #temp.ResetEnabled := false;
+	                IF #Feature.Bit19 AND #instProtect.OutLock_N THEN
+	                    #stat.RstProtectDone := true;
+	                END_IF;
+	                
+	                IF #Feature.Bit19 AND #temp.Trip_N THEN
+	                    #stat.RstTripDone := true;
+	                END_IF;
+	                
+	                #stat.ResetNeededMonErr := false;
+	                #stat.ResetNeededProtect := false;
+	                #stat.ResetNeededTrip := false;
+	                #stat.ResetNeededFaultExtCSF := false;
+	                #stat.ResetNeededRapidStop := false;
+	                #R_StpAct.Value := false;
+	                
+	                #stat.MonTime := #MonTiDynamic;
+	                IF #Feature.Bit13 AND #FbkRunOut.Value THEN
+	                    #stat.MonTime := #MonTiDyStop;
+	                END_IF;
+	                #MonDynErr.Value := false;
+	                #MonDynStopErr.Value := false;
+	                #MonStaErr.Value := false;
+	                #stat.MonTiDynamicProcess := false;
+	                #stat.MonTiStatic := false;
+	                #temp.MonErr := false;
+	            END_IF;
+	        END_IF;
+	        
+	        // разрешение оператору на сброс
+	        #temp.OSPerRst := ((#temp.ResetEnabled AND #temp.OpResetRequest AND NOT (#StopForce.Value OR #StartForce.Value))
+	        OR (NOT #FbkRunOut.Value AND #R_StpAct.Value)) AND #temp.OSPerRst;
+	    END_REGION
+	    
+	    REGION Start
+	        IF NOT #temp.ForceInputActive AND #LocalAct.Value THEN
+	            // местный режим
+	            
+	            #temp.InvalidCommand := NOT #Feature2.Bit4 AND #StartLocal.Value AND #StopLocal.Value;
+	            IF #LocalSetting = 1 OR #LocalSetting = 3 THEN
+	                IF (#temp.InvalidCommand AND #Feature2.Bit3) OR #temp.Interlocked THEN
+	                    #stat.CmdStart := false;
+	                ELSIF NOT #temp.InvalidCommand AND NOT (#stat.ResetNeededMonErr OR #stat.ResetNeededTrip OR #stat.ResetNeededFaultExtCSF) THEN
+	                    IF #Feature2.Bit4 THEN
+	                        IF #StartLocal.Value THEN
+	                            #stat.CmdStart := true;
+	                        ELSE
+	                            #stat.CmdStart := false;
+	                        END_IF;
+	                    ELSE
+	                        IF #StartLocal.Value THEN
+	                            #stat.CmdStart := true;
+	                        ELSIF #StopLocal.Value THEN
+	                            #stat.CmdStart := false;
+	                        END_IF;
+	                    END_IF;
+	                END_IF;
+	                
+	            ELSIF #LocalSetting = 2 OR #LocalSetting = 4 THEN
+	                IF #temp.SimAct THEN
+	                    #stat.CmdStart := #FbkRunOut.Value;
+	                ELSE
+	                    #stat.CmdStart := #FbkRun.Value;
+	                END_IF;
+	            END_IF;
+	            
+	        ELSIF #StartForce.Value OR #StopForce.Value THEN
+	            // форсированный режим
+	            
+	            #temp.InvalidCommand := #StartForce.Value AND #StopForce.Value;
+	            #temp.OSPerStart := false;
+	            #temp.OSPerStop := false;
+	            IF #temp.InvalidCommand THEN
+	                IF #Feature2.Bit3 THEN
+	                    #stat.CmdStart := false;
+	                END_IF;
+	            ELSE
+	                IF #StartForce.Value THEN
+	                    #stat.CmdStart := true;
+	                ELSIF #StopForce.Value THEN
+	                    #stat.CmdStart := false;
+	                END_IF;
+	                
+	            END_IF;
+	        ELSIF #AutAct.Value THEN
+	            // автоматический режим
+	            
+	            #temp.InvalidCommand := NOT #Feature.Bit4 AND #StartAut.Value AND #StopAut.Value;
+	            
+	            IF (#temp.InvalidCommand AND #Feature2.Bit3) OR #temp.Interlocked OR #temp.BadAutST THEN
+	                #stat.CmdStart := false;
+	            ELSIF NOT #temp.InvalidCommand AND NOT (#stat.ResetNeededMonErr OR #stat.ResetNeededTrip OR #stat.ResetNeededFaultExtCSF) THEN
+	                IF #StartAut.Value THEN
+	                    #stat.CmdStart := true;
+	                ELSIF (NOT #Feature.Bit4 AND #StopAut.Value) OR (NOT #StartAut.Value AND #Feature.Bit4) THEN
+	                    #stat.CmdStart := false;
+	                END_IF;
+	            END_IF;
+	            
+	        ELSIF #ManAct.Value THEN
+	            // ручной режим
+	            
+	            #temp.InvalidCommand := #StopMan AND #StartMan;
+	            IF #temp.InvalidCommand THEN
+	                #temp.OSPerStart := false;
+	                #temp.OSPerStop := false;
+	            END_IF;
+	            
+	            IF (#temp.InvalidCommand AND #Feature2.Bit3) OR #temp.Interlocked THEN
+	                #stat.CmdStart := false;
+	            ELSIF NOT #temp.InvalidCommand AND NOT (#stat.ResetNeededMonErr OR #stat.ResetNeededTrip OR #stat.ResetNeededFaultExtCSF) THEN
+	                IF #StartMan THEN
+	                    #stat.CmdStart := true;
+	                ELSIF #StopMan THEN
+	                    #stat.CmdStart := false;
+	                END_IF;
+	            END_IF;
+	        END_IF;
+	        
+	    END_REGION
+	    
+	    // MonErr
+	    IF NOT #temp.ForceInputActive AND #temp.MonErr
+	        AND NOT (#stat.ResetNeededFaultExtCSF AND #LocalAct.Value AND (#LocalSetting = 2 OR #LocalSetting = 4)) THEN
+	        #stat.CmdStart := false;
+	        #temp.MonSafePosErr := true;
+	    END_IF;
+	    
+	    // Экстренный стоп
+	    IF NOT #Feature.Bit14 THEN
+	        #RapidStp := false;
+	    END_IF;
+	    IF (#RapidStp AND #Feature.Bit14) OR #R_StpAct.Value THEN
+	        #R_StpAct.Value := true;
+	        #stat.CmdStart := false;
+	    END_IF;
+	    
+	    // Trip
+	    IF #temp.Trip_N OR #stat.ResetNeededTrip THEN
+	        #stat.CmdStart := false;
+	    END_IF;
+	    
+	    // FaultExt или CSF
+	    IF (NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value) AND #stat.ResetNeededFaultExtCSF) OR #temp.FaultExtCSF THEN
+	        #stat.CmdStart := false;
+	    END_IF;
+	    
+	    // LockAct
+	    #LockAct.Value := (NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value AND NOT #Feature.Bit27)
+	    AND #temp.Interlocked AND NOT #temp.ForceInputActive) OR #temp.Trip_N OR #stat.ResetNeededTrip;
+	    
+	    IF NOT #stat.CmdStart AND #Start.Value AND #FbkRunOut.Value AND #IdleTime > 0 AND NOT #temp.MonErr
+	        AND NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value) THEN
+	        #stat.WaitToFbkStop := true;
+	    ELSIF NOT #FbkRunOut.Value OR #IdleTime <= 0 OR #temp.MonErr
+	        OR ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value) THEN
+	        #stat.WaitToFbkStop := false;
+	    END_IF;
+	    
+	    IF NOT #stat.prev.CmdStart AND #stat.CmdStart AND #stat.WaitToFbkStop THEN
+	        #Start.Value := false;
+	    END_IF;
+	    
+	    
+	    REGION IdleTime
+	        IF #IdleTime > 0 AND #stat.WaitToFbkStop THEN
+	            #Start.Value := false;
+	        END_IF;
+	        
+	        IF #IdleTime < 0 THEN
+	            #IdleTime := T#0ms;
+	        END_IF;
+	        
+	        IF #IdleTime <> #stat.prev.OldIdleTime AND #stat.StopIdleAct THEN
+	            #stat.IdleTime := #IdleTime - #stat.prev.OldIdleTime + #stat.IdleTime;
+	            IF #stat.IdleTime < 0 THEN
+	                #stat.IdleTime := T#0ms;
+	            END_IF;
+	        END_IF;
+	        
+	        #stat.prev.OldIdleTime := #IdleTime;
+	        IF #stat.prev.OldIdleTime >= #OBInfo.SampleTime AND (NOT #FbkRunOut.Value OR #stat.StopIdleAct)
+	            AND NOT #Start.Value THEN
+	            IF #stat.IdleTime >= #OBInfo.SampleTime THEN
+	                #stat.IdleTime := #stat.IdleTime - #OBInfo.SampleTime;
+	                IF (#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value THEN
+	                    #stat.StopIdleAct := false;
+	                ELSE
+	                    #stat.StopIdleAct := true;
+	                END_IF;
+	                
+	                IF NOT #stat.prev.CmdStart AND #stat.CmdStart THEN
+	                    #stat.CmdStart := false;
+	                END_IF;
+	            ELSE
+	                #stat.StopIdleAct := false;
+	            END_IF;
+	        ELSE
+	            #stat.StopIdleAct := false;
+	            #stat.IdleTime := #IdleTime;
+	        END_IF;
+	    END_REGION
+	    
+	    
+	    REGION WarnAct
+	        IF NOT #stat.CmdStart THEN
+	            #WarnAct.Value := false;
+	        ELSIF (#WarnTiAut >= #OBInfo.SampleTime AND #AutAct.Value)
+	            OR (#WarnTiMan >= #OBInfo.SampleTime
+	            AND ((#LocalAct.Value AND #temp.ForceInputActive) OR #ManAct.Value)) THEN
+	            IF #AutAct.Value THEN
+	                IF #stat.CmdStart <> #stat.prev.CmdStart THEN
+	                    #stat.WarnTime := #WarnTiAut;
+	                END_IF;
+	            ELSE
+	                IF #stat.CmdStart <> #stat.prev.CmdStart THEN
+	                    #stat.WarnTime := #WarnTiMan;
+	                END_IF;
+	            END_IF;
+	            
+	            IF #stat.WarnTime >= #OBInfo.SampleTime THEN
+	                #stat.WarnTime := #stat.WarnTime - #OBInfo.SampleTime;
+	                #WarnAct.Value := true;
+	            ELSE
+	                #WarnAct.Value := false;
+	            END_IF;
+	        ELSE
+	            #WarnAct.Value := false;
+	        END_IF;
+	        
+	        #WarnAct.ST := 16#80;
+	    END_REGION
+	    
+	    IF NOT #WarnAct.Value AND NOT #stat.StopIdleAct AND NOT #stat.WaitToFbkStop THEN
+	        #Start.Value := #stat.CmdStart;
+	    END_IF;
+	    
+	    REGION Sim
+	        IF (#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value AND #temp.SimAct THEN
+	            #ErrorNum := 52;
+	        END_IF;
+	        
+	        #temp.SimOnFbkDelay := false;
+	        IF NOT (#ErrorNum = 52) AND #temp.SimAct THEN
+	            IF #Feature.Bit11 THEN
+	                #temp.SimOnFbkDelay := true;
+	            ELSE
+	                #FbkRunOut.Value := #Start.Value;
+	            END_IF;
+	            
+	            #FbkRunOut.ST := 16#60;
+	            #Start.ST := 16#60;
+	            #P_Start.ST := 16#60;
+	            #P_Stop.ST := 16#60;
+	            IF #SimLiOp.Value THEN
+	                //Buffer_at.SimAV := #SimAV_Li.Value;
+	                #SimAV := #SimAV_Li.Value;
+	            END_IF;
+	            
+	        ELSE
+	            #FbkRunOut := #FbkRun;
+	            #Start.ST := 16#80;
+	            #P_Start.ST := 16#80;
+	            #P_Stop.ST := 16#80;
+	            #SimAV := #AV_Out.Value;
+	            //Buffer_at.SimAV := #SimAV;
+	        END_IF;
+	        
+	        IF #SimLiOp.Value THEN
+	            #SimOn := #SimOnLi.Value;
+	        END_IF;
+	    END_REGION
+	    
+	    REGION MonErr
+	        #temp.FbkOK := (#Start.Value AND #FbkRunOut.Value) OR (NOT #Start.Value AND NOT #FbkRunOut.Value);
+	        IF #MonTiDynamic < #OBInfo.SampleTime THEN
+	            #MonTiDynamic := #OBInfo.SampleTime;
+	        END_IF;
+	        
+	        IF #MonTiDyStop < #OBInfo.SampleTime THEN
+	            #MonTiDyStop := #OBInfo.SampleTime;
+	        END_IF;
+	        
+	        IF #MonTiStatic > #MonTiDynamic THEN
+	            #MonTiStatic := #MonTiDynamic;
+	        END_IF;
+	        
+	        IF #MonTiStatic < 0 THEN
+	            #MonTiStatic := T#0ms;
+	        END_IF;
+	        
+	        IF (#Start.Value <> #FbkRunOut.Value) AND (#Monitor OR #temp.SimOnFbkDelay)
+	            AND (#stat.CmdStart = #stat.prev.CmdStart OR #temp.MonSafePosErr) AND NOT #WarnAct.Value THEN
+	            IF #stat.prev.FbkRun = #FbkRunOut.Value THEN
+	                #stat.MonTiDynamicProcess := true;
+	            END_IF;
+	            
+	            IF #stat.prev.FbkRun <> #FbkRunOut.Value AND #stat.prev.Start = #Start.Value AND NOT #stat.MonTiDynamicProcess THEN
+	                #stat.MonTime := #MonTiStatic;
+	                #stat.MonTiStatic := true;
+	            END_IF;
+	            
+	            IF #stat.MonTime >= #OBInfo.SampleTime THEN
+	                #stat.MonTiDynamicProcess := true;
+	                #stat.MonTime := #stat.MonTime - #OBInfo.SampleTime;
+	            ELSE
+	                IF #temp.SimOnFbkDelay THEN
+	                    #FbkRunOut.Value := #Start.Value;
+	                ELSE
+	                    IF #stat.MonTiStatic THEN
+	                        #MonStaErr.Value := true;
+	                    ELSE
+	                        IF NOT #Start.Value AND #Feature.Bit13 THEN
+	                            #MonDynStopErr.Value := true;
+	                        ELSE
+	                            #MonDynErr.Value := true;
+	                        END_IF;
+	                    END_IF;
+	                END_IF;
+	                
+	                #stat.MonTiDynamicProcess := false;
+	            END_IF;
+	        ELSIF NOT #stat.ResetNeededMonErr THEN
+	            #stat.MonTime := #MonTiDynamic;
+	            IF #Feature.Bit13 AND #FbkRunOut.Value AND NOT #Start.Value THEN
+	                #stat.MonTime := #MonTiDyStop;
+	            END_IF;
+	            
+	            #MonDynErr.Value := false;
+	            #MonDynStopErr.Value := false;
+	            #MonStaErr.Value := false;
+	            #stat.MonTiDynamicProcess := false;
+	            #stat.MonTiStatic := false;
+	        END_IF;
+	        
+	        #CurrMon := T#0ms;
+	        IF #stat.MonTiDynamicProcess THEN
+	            #CurrMon := #stat.MonTime;
+	        END_IF;
+	        
+	        IF (#MonStaErr.Value OR #MonDynErr.Value OR #MonDynStopErr.Value)
+	            AND NOT ((#StartForce.Value OR #StopForce.Value)
+	            AND ((#LocalAct.Value AND #Feature2.Bit8 AND (#LocalSetting = 1 OR #LocalSetting = 3))
+	            OR NOT #LocalAct.Value)) THEN
+	            #Start.Value := false;
+	        END_IF;
+	    END_REGION
+	    
+	    
+	    REGION P_Start, P_Stop
+	        IF (#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value AND #Feature.Bit20 THEN
+	            #stat.PulseTimeStart := - #OBInfo.SampleTime;
+	            #stat.PulseTimeStop := - #OBInfo.SampleTime;
+	        END_IF;
+	        
+	        IF #PulseWidth < #OBInfo.SampleTime THEN
+	            #PulseWidth := #OBInfo.SampleTime;
+	        END_IF;
+	        
+	        IF #stat.PulseTimeStart >= 0 AND #Start.Value THEN
+	            #stat.PulseTimeStart := #stat.PulseTimeStart - #OBInfo.SampleTime;
+	        END_IF;
+	        
+	        IF NOT #Start.Value THEN
+	            #stat.PulseTimeStart := #PulseWidth;
+	        END_IF;
+	        
+	        #P_Start.Value := #stat.PulseTimeStart >= 0 AND #Start.Value;
+	        
+	        IF NOT #Start.Value AND #stat.PulseTimeStop >= 0 THEN
+	            #stat.PulseTimeStop := #stat.PulseTimeStop - #OBInfo.SampleTime;
+	        END_IF;
+	        
+	        IF #Start.Value THEN
+	            #stat.PulseTimeStop := #PulseWidth;
+	        END_IF;
+	        
+	        #P_Stop.Value := NOT (NOT #Start.Value AND #stat.PulseTimeStop >= 0);
+	    END_REGION
+	    
+	    
+	    REGION ST_Worst
+	        #temp.stcInST.b0 := #FbkRunOut.ST;
+	        #temp.stcInST.b1 := #LocalLi.ST;
+	        #temp.stcInST.b2 := #StartLocal.ST;
+	        #temp.stcInST.b3 := #StopLocal.ST;
+	        #temp.stcInST.b4 := #Trip.ST;
+	        #temp.stcInST.b5 := #AV_Out.ST;
+	        #temp.stcInST.b6 := #StartChnST.ST;
+	        IF #Feature2.Bit10 THEN
+	            #temp.stcInST.b7 := #StartAut.ST;
+	            #temp.stcInST.b8 := #StopAut.ST;
+	            #ST_Worst := "PL_SelST16"(InST := #temp.stcInST,
+	                                      Num := 9,
+	                                      SelPrio := 0);
+	        ELSE ;
+	            #ST_Worst := "PL_SelST16"(InST := #temp.stcInST,
+	                                      Num := 7,
+	                                      SelPrio := 0);
+	        END_IF;
+	    END_REGION
+	    
+	    #Run.Value := #Start.Value AND #FbkRunOut.Value
+	    AND NOT (#MonDynErr.Value OR #MonDynStopErr.Value OR #MonStaErr.Value);
+	    
+	    #Stop.Value := NOT #Start.Value AND NOT #FbkRunOut.Value
+	    AND NOT (#MonDynErr.Value OR #MonDynStopErr.Value OR #MonStaErr.Value);
+	    
+	    #Run.ST := #FbkRunOut.ST;
+	    #Stop.ST := #FbkRunOut.ST;
+	    
+	    #temp.stcInST.b0 := #StartAut.ST;
+	    #temp.stcInST.b1 := #StopAut.ST;
+	    #AutoST := "PL_SelST16"(InST := #temp.stcInST,
+	                            Num := 2,
+	                            SelPrio := 0);
+	    
+	    REGION Msg
+	        #Msg1(Ack := #EventState.Control.%X0,
+	              Lock := #EventState.Control.%X2,
+	              In1 := (#MonDynErr.Value OR #MonDynStopErr.Value OR #MonStaErr.Value)
+	              AND NOT #temp.FbkOK AND NOT (#MsgLock.Value AND #Feature.Bit25),
+	              In2 := NOT (#MsgLock.Value AND #Feature.Bit25) AND #temp.Trip_N,
+	              In3 := NOT (#MsgLock.Value AND #Feature.Bit25) AND #CSF.Value,
+	              In4 := NOT (#MsgLock.Value AND #Feature.Bit25) AND #ExtMsg1.Value,
+	              In5 := NOT (#MsgLock.Value AND #Feature.Bit25) AND #ExtMsg2.Value,
+	              In6 := NOT (#MsgLock.Value AND #Feature.Bit25) AND #ExtMsg3.Value
+	        );
+	    END_REGION
+	    
+	    #EventState.InUnack := #Msg1.EventState.InUnack;
+	    #EventState.InAck := #Msg1.EventState.InAck;
+	    #EventState.OutUnack := #Msg1.EventState.OutUnack;
+	    
+	    #EventState.Control.%X0 := false;
+	    #EventState.Control.%X3 := #EventState.Control.%X2;
+	    
+	    // сохраняем значения для фронтов
+	    IF NOT #OosAct.Value THEN
+	        #stat.prev.FbkRun := #FbkRunOut.Value;
+	        #stat.prev.Start := #Start.Value;
+	        #stat.prev.CmdStart := #stat.CmdStart;
+	        #stat.prev.StartAut := #StartAut.Value;
+	        #stat.prev.StopAut := #StopAut.Value;
+	        #stat.prev.LocalLi := #LocalLi.Value;
+	        #stat.prev.RstLi := #RstLi.Value;
+	        #stat.prev.StartLocal := #StartLocal.Value;
+	        #stat.prev.StopLocal := #StopLocal.Value;
+	    END_IF;
+	END_IF;
+	
+	IF #OBInfo.FirstScan OR #OBInfo.ObCycle THEN
+	    
+	    IF NOT #OosAct.Value THEN
+	        #GrpErr.Value := #temp.MonErr OR #CSF.Value OR #stat.ResetNeededTrip OR #temp.Trip_N
+	        OR #temp.FaultExtCSF OR #stat.ResetNeededFaultExtCSF;
+	        
+	        #RdyToStart.Value := NOT (NOT (NOT #Feature.Bit18 AND #CSF.Value) AND #GrpErr.Value)
+	        AND NOT #stat.StopIdleAct AND #AutAct.Value AND NOT #temp.ForceInputActive AND NOT #LockAct.Value
+	        AND NOT #R_StpAct.Value;
+	        
+	        REGION Status1
+	            
+	            // Occupied
+	            #Status1.%X0 := #Occupied;
+	            
+	            // BatchEn
+	            #Status1.%X1 := #BatchEn;
+	            
+	            // SimOn
+	            #Status1.%X2 := #temp.SimAct;
+	            
+	            // OosAct.Value
+	            #Status1.%X3 := #OosAct.Value;
+	            
+	            // OosLi.Value
+	            #Status1.%X4 := #OosLi.Value;
+	            
+	            // 0 = ManAct.Value; 1 = AutoAct.Value
+	            #Status1.%X5 := #AutAct.Value;
+	            
+	            // LocalAct.Value
+	            #Status1.%X6 := #LocalAct.Value;
+	            
+	            // 0: Open padlock
+	            #Status1.%X7 := #temp.Interlocked;
+	            
+	            // Start.Value
+	            #Status1.%X8 := #Start.Value;
+	            
+	            // Stop.Value
+	            #Status1.%X9 := NOT #Start.Value;
+	            
+	            // MonDynStopErr.Value
+	            #Status1.%X10 := #MonDynStopErr.Value;
+	            
+	            // MonStaErr.Value
+	            #Status1.%X11 := #MonStaErr.Value;
+	            
+	            // MonDynErr.Value
+	            #Status1.%X12 := #MonDynErr.Value OR #MonDynStopErr.Value;
+	            
+	            // BypProt
+	            #Status1.%X13 := ((#BypProt AND #temp.SimAct) OR
+	            (#LocalSetting = 1 OR #LocalSetting = 3) AND #LocalAct.Value AND #BypProt)
+	            OR ((#LocalSetting = 2 OR #LocalSetting = 4) AND #LocalAct.Value AND
+	            (NOT #Feature.Bit27 OR #BypProt)) OR #temp.ForceInputActive;
+	            
+	            // Invalid signal status
+	            #Status1.%X14 := #instOM.xInvalidMode OR #temp.InvalidCommand;
+	            
+	            // Mode switchover error
+	            #Status1.%X15 := #instOM.xOutStatusWord1x15;
+	            
+	            // 1 = Intlock is active
+	            #Status1.%X16 := #instIntlock.OutLock_N;
+	            
+	            // 1 = Permit is active
+	            #Status1.%X17 := NOT (#Start.Value OR #FbkRun.Value) AND #instPermit.OutLock_N;
+	            
+	            // 1 = Protect is active
+	            #Status1.%X18 := #instProtect.OutLock_N OR #stat.ResetNeededProtect;
+	            
+	            // Trip.Value
+	            #Status1.%X19 := #temp.Trip_N OR #stat.ResetNeededTrip;
+	            
+	            // Display "Forced start"
+	            #Status1.%X20 := ((NOT #StopForce.Value AND #StartForce.Value)
+	            OR (#temp.ForceInputActive AND #temp.InvalidCommand AND #stat.CmdStart))
+	            AND ((#LocalAct.Value AND #Feature2.Bit8
+	            AND (#LocalSetting = 1 OR #LocalSetting = 3)) OR NOT #LocalAct.Value);
+	            
+	            // Display "Forced stop"
+	            #Status1.%X21 := ((NOT #StartForce.Value AND #StopForce.Value)
+	            OR (#temp.ForceInputActive AND #temp.InvalidCommand AND NOT #stat.CmdStart))
+	            AND ((#LocalAct.Value AND #Feature2.Bit8
+	            AND (#LocalSetting = 1 OR #LocalSetting = 3)) OR NOT #LocalAct.Value);   ;
+	            
+	            #Status1.%X22 := false;
+	            
+	            // "Interlock" button is enabled
+	            #Status1.%X23 := #instIntlock.OutLock_En;
+	            
+	            // Reset request in automatic preview
+	            #Status1.%X24 := NOT #temp.OSPerRst AND #temp.ResetEnabled AND #AutAct.Value;
+	            
+	            // WarnAct.Value or Idle Time is active
+	            #Status1.%X25 := #WarnAct.Value OR #stat.StopIdleAct;
+	            
+	            // Bypass information from previous function block
+	            IF #Feature2.Bit2 THEN
+	                #Status1.%X26 := (#Intl_En AND #Intlock.BypAct)
+	                OR (#Prot_En AND #Protect.BypAct) OR (#Perm_En AND #Permit.BypAct);
+	            ELSE
+	                #Status1.%X26 := (#Intlock.Value AND #Intl_En AND #Intlock.ST = 16#60)
+	                OR (#Protect.Value AND #Prot_En AND #Protect.ST = 16#60)
+	                OR (#Permit.Value AND #Perm_En AND #Permit.ST = 16#60);
+	            END_IF;
+	            
+	            // Automatic preview for "starting" or "stopping"
+	            IF #temp.BadAutST THEN
+	                #Status1.%X27 := false;
+	                #Status1.%X28 := true;
+	            ELSIF (NOT #StopAut.Value OR #Feature.Bit4) AND #StartAut.Value THEN
+	                #Status1.%X27 := true;
+	                #Status1.%X28 := false;
+	            ELSIF NOT #StartAut.Value AND (#StopAut.Value OR #Feature.Bit4) THEN
+	                #Status1.%X27 := false;
+	                #Status1.%X28 := true;
+	            ELSIF #Feature2.Bit3 AND #StartAut.Value AND #StopAut.Value THEN
+	                #Status1.%X27 := false;
+	                #Status1.%X28 := true;
+	            ELSE
+	                #Status1.%X27 := #stat.CmdStart;
+	                #Status1.%X28 := NOT #stat.CmdStart;
+	            END_IF;
+	            
+	            // FaultExt or CSF
+	            #Status1.%X29 := #temp.FaultExtCSF OR #stat.ResetNeededFaultExtCSF;
+	            
+	            // «Permission» button is enabled
+	            #Status1.%X30 := #instPermit.OutLock_En;
+	            
+	            // «Protection» button is enabled
+	            #Status1.%X31 := #instProtect.OutLock_En;
+	        END_REGION
+	        
+	    ELSE
+	        #Status1 := #Status1 AND 16#18000000;
+	        #Status2 := 16#0;//Buffer_at.MsgStatus and 16#7E;
+	        #Status3 := 16#0;
+	        #Status4 := 16#0;
+	        #Status5 := 16#0;
+	    END_IF;
+	    
+	    #Status2.%X31 := #MS_RelOp;
+	    
+	END_IF;
+	
+	
+	// запись выходов
+	
+	#R_StpAct.Value := false;
+	#GrpErr.Value := #stat.Err.MonDynErr OR #stat.Err.MonDynStopErr OR #stat.Err.MonStaErr OR #CSF.Value
+	OR #FaultExt.Value OR NOT #Trip.Value;
+	
+	
+	#FbkRunOut := #FbkRun;
+	
+	REGION ErrorNum
+	    IF #LocalSetting < 0 OR #LocalSetting > 4 THEN
+	        #ErrorNum := 41;
+	    ELSIF (#LocalSetting = 0 OR #LocalSetting = 3 OR #LocalSetting = 4) AND #LocalLi.Value THEN
+	        #ErrorNum := 42;
+	    END_IF;
+	    IF #temp.InvalidCommand THEN
+	        #ErrorNum := 51;
+	    END_IF;
+	END_REGION
+	
+	
+	
+	
+	
+	REGION Status2
+	    // Display for interlocks in block icon
+	    #Status2.%X30 := #instPermit.OutLock_En OR #instIntlock.OutLock_En OR #instProtect.OutLock_En;    
+	END_REGION
+	
+	
+	REGION Status3
+	    
+	    // Hidden bypass signal in Permit
+	    #Status3.%X11 := #Permit.BypAct;
+	    
+	    // Hidden bypass signal in Interlock
+	    #Status3.%X12 := #Intlock.BypAct;
+	    
+	    // Hidden bypass signal in Protect
+	    #Status3.%X13 := #Protect.BypAct;
+	    
+	    // Command for rapid stop
+	    #Status3.%X23 := #R_StpAct.Value;
+	    
+	    // Output command for starting the motor
+	    #Status3.%X24 := #Start.Value;
+	    
+	    // Output command for stopping the motor
+	    #Status3.%X25 := NOT #Start.Value AND NOT #R_StpAct.Value;
+	END_REGION
+	
+	
+	REGION OS_Perm
+	    GATHER(IN := #OS_Perm,
+	           OUT => #OS_PermOut);
+	    
+	    IF #OBInfo.FirstScan THEN
+	        #OS_PermLog := 16#0;
+	    ELSIF #OosAct.Value THEN
+	        #OS_PermLog := 16#1002 AND #OS_PermOut;
+	    ELSE
+	        #OS_PermLog.%X0 := #instOM.OS_PermOut_Bit0;
+	        #OS_PermLog.%X1 := #instOM.OS_PermOut_Bit1;
+	        #OS_PermLog.%X2 := #instOM.OS_PermOut_Bit2;
+	        #OS_PermLog.%X3 := #instOM.OS_PermOut_Bit3;
+	        #OS_PermLog.%X4 := #ManAct.Value AND #Start.Value;
+	        #OS_PermLog.%X5 := #ManAct.Value AND NOT #Start.Value;
+	        #OS_PermLog.%X6 := false;
+	        
+	        //1 = Operator can reset the motor
+	        #OS_PermLog.%X7 := #temp.OSPerRst;
+	        
+	        #OS_PermLog.%X31 := #Feature.Bit14 AND NOT #R_StpAct.Value;
+	    END_IF;
+	END_REGION
+	
+	
+	// сбрасываем команды из HMI
+	#StartMan := false;
+	#StopMan := false;
+	#RstOp := false;
+	#RapidStp := false;
+	
+END_FUNCTION_BLOCK
+

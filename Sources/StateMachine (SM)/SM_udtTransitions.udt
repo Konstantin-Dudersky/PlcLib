@@ -1,0 +1,8 @@
+﻿TYPE "SM_udtTransitions"
+VERSION : 0.1
+   STRUCT
+      t { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..19, 0..19] of Byte;
+   END_STRUCT;
+
+END_TYPE
+

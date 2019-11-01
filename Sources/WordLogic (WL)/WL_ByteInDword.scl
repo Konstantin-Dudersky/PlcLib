@@ -1,0 +1,28 @@
+﻿FUNCTION "WL_ByteInDword" : Byte
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Num : USInt;
+      InDword : DWord;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         Num : USInt;
+      END_STRUCT;
+      tempInDword : DWord;
+      tempInDwordAt AT tempInDword : Array[0..#MAX_BYTE] of Byte;
+   END_VAR
+
+   VAR CONSTANT 
+      MAX_BYTE : Int := 3;
+   END_VAR
+
+
+BEGIN
+	#temp.Num := LIMIT_USINT(MN := 0, IN := #Num, MX := #MAX_BYTE);
+	#tempInDword := #InDword;
+	
+	#WL_ByteInDword := #tempInDwordAt[#MAX_BYTE - #temp.Num];
+END_FUNCTION
+

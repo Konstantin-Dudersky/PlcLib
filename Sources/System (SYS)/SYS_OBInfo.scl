@@ -1,0 +1,101 @@
+﻿FUNCTION_BLOCK "SYS_OBInfo"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_OUTPUT 
+      ObClass { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      ObStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      ObProgram { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      ObCycle { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      FirstScan { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      SampleTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      ErrorID { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         TopSiNone {InstructionName := 'SI_none'; LibVersion := '1.0'} : SI_none;
+         TopSiCyclic {InstructionName := 'SI_Cyclic'; LibVersion := '1.0'} : SI_Cyclic;
+         TopSiProgramCycle {InstructionName := 'SI_ProgramCycle'; LibVersion := '1.0'} : SI_ProgramCycle;
+         StartUpSi {InstructionName := 'SI_Startup'; LibVersion := '1.0'} : SI_Startup;
+         TempInt : Int;
+         SampleTime : UDInt;
+         TempUDint : UDInt;
+         TempWord : Word;
+      END_STRUCT;
+   END_VAR
+
+   VAR CONSTANT 
+      EID_RD_SINFO : Word := 16#2;
+      EID_QRY_CINT : Word := 16#3;
+   END_VAR
+
+
+BEGIN
+	
+	// определяем OB_Class вызывающего блока
+	#temp.TempInt := RD_SINFO(TOP_SI => #temp.TopSiNone, START_UP_SI => #temp.StartUpSi);
+	
+	IF #temp.TempInt <> 16#0 THEN
+	    "DG_BlockError"(Sub        := #EID_RD_SINFO,
+	                    SubErrorId := INT_TO_WORD(#temp.TempInt),
+	                    ErrorId            := #ErrorID);
+	END_IF;
+	
+	#ObClass := #temp.TopSiNone.OB_Class;
+	#ObStart := #ObClass = 100;
+	#ObProgram := #ObClass = 1;
+	#ObCycle := #ObClass = 30;
+	
+	CASE #temp.TopSiNone.OB_Class OF
+	    1:
+	        #temp.TempInt := RD_SINFO(TOP_SI => #temp.TopSiProgramCycle, START_UP_SI => #temp.StartUpSi);
+	        
+	        IF #temp.TempInt <> 16#0 THEN
+	            "DG_BlockError"(Sub        := #EID_RD_SINFO,
+	                            SubErrorId := INT_TO_WORD(#temp.TempInt),
+	                            ErrorId            := #ErrorID);
+	        END_IF;
+	        
+	        #FirstScan := #temp.TopSiProgramCycle.Initial_Call;
+	        #SampleTime := T#0ms;
+	        
+	        
+	    30:
+	        #temp.TempInt := RD_SINFO(TOP_SI => #temp.TopSiCyclic, START_UP_SI => #temp.StartUpSi);
+	        
+	        IF #temp.TempInt <> 16#0 THEN
+	            "DG_BlockError"(Sub        := #EID_RD_SINFO,
+	                            SubErrorId := INT_TO_WORD(#temp.TempInt),
+	                            ErrorId            := #ErrorID);
+	        END_IF;
+	        
+	        #temp.TempInt := QRY_CINT(OB_NR := UINT_TO_INT(#temp.TopSiCyclic.OB_Nr),
+	                                  CYCLE => #temp.SampleTime,
+	                                  PHASE => #temp.TempUDint,
+	                                  STATUS => #temp.TempWord);
+	        
+	        IF #temp.TempInt <> 16#0 THEN
+	            "DG_BlockError"(Sub        := #EID_QRY_CINT,
+	                            SubErrorId := INT_TO_WORD(#temp.TempInt),
+	                            ErrorId            := #ErrorID);
+	        END_IF;
+	        
+	        #FirstScan := #temp.TopSiCyclic.Initial_Call;
+	        #SampleTime := UDINT_TO_TIME(#temp.SampleTime / 1000);
+	        
+	        
+	    100:
+	        #FirstScan := true;
+	        #SampleTime := T#0ms;
+	        
+	        
+	    ELSE:
+	        
+	        #FirstScan := false;
+	        #SampleTime := T#0ms;
+	        
+	END_CASE;
+	
+END_FUNCTION_BLOCK
+

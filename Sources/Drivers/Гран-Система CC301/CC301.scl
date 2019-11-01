@@ -1,0 +1,176 @@
+﻿FUNCTION_BLOCK "CC301"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Enable { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 - Опрос счетчика
+      Address { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt;   // Адрес счетчика
+      Port { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : PORT;   // Порт RS-485 в ПЛК
+      ResendTimeout { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time := T#100ms;   // Повторение запроса пакета
+      ErrorTimeout { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time := T#5s;   // Таймаут ошибки опроса
+   END_VAR
+
+   VAR_OUTPUT 
+      Busy { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Опрос выполняется
+      Done { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Опрос выполнен
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Ошибка опроса
+      FactoryNumber { ExternalWritable := 'False'} : String[10];   // Заводской номер
+      "SumActiveEnergy+" { ExternalWritable := 'False'} : Real;   // Суммарная накопленная энергия
+      "SumActiveEnergy-" { ExternalWritable := 'False'} : Real;   // Суммарная накопленная энергия
+      "SumReactiveEnergy+" { ExternalWritable := 'False'} : Real;   // Суммарная накопленная энергия
+      "SumReactiveEnergy-" { ExternalWritable := 'False'} : Real;   // Суммарная накопленная энергия
+   END_VAR
+
+   VAR 
+      Stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         Query { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+         Resend { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      END_STRUCT;
+      BufferSend { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..127] of Byte;
+      BufferRcv { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..127] of Byte;
+      Send_P2P_Instance {InstructionName := 'Send_P2P'; LibVersion := '3.1'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Send_P2P;
+      Receive_P2P_Instance {InstructionName := 'Receive_P2P'; LibVersion := '2.6'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Receive_P2P;
+      TonResend {InstructionName := 'TON_TIME'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TON_TIME;
+      Timeout {InstructionName := 'TON_TIME'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TON_TIME;
+      Receive_Reset_Instance {InstructionName := 'Receive_Reset'; LibVersion := '1.2'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Receive_Reset;
+   END_VAR
+
+   VAR_TEMP 
+      Temp : Struct
+         CRC : Word;
+         tempInt0 : Int;
+         resend : Bool;
+      END_STRUCT;
+      i : Int;
+   END_VAR
+
+   VAR CONSTANT 
+      SS_DONE : Int := 97;
+      SS_ERROR : Int := 99;
+      SS_STOP : Int := -1;
+   END_VAR
+
+
+BEGIN
+	#Receive_P2P_Instance("PORT" := #Port,
+	                      BUFFER := #BufferRcv);
+	
+	CASE #Stat.Query OF
+	    #SS_STOP:
+	        IF #Enable THEN
+	            #Stat.Query := 1;
+	        END_IF;
+	        
+	    1:
+	        // заводской номер
+	        
+	        IF NOT #Enable THEN
+	            #Stat.Query := #SS_STOP;
+	        END_IF;
+	        
+	        "GranSystem_Request"(Address := #Address,
+	                             Function := 3,
+	                             Code := 18,
+	                             Offset := 0,
+	                             Tariff := 0,
+	                             Clarification := 0,
+	                             Buffer := #BufferSend);
+	        
+	        IF #Receive_Reset_Instance.DONE OR #Receive_Reset_Instance.ERROR THEN
+	            #Stat.Query += 1;
+	        END_IF;
+	        
+	    2:
+	        IF NOT #Enable THEN
+	            #Stat.Query := #SS_STOP;
+	        END_IF;
+	        
+	        IF #Receive_P2P_Instance.ERROR OR #Timeout.Q THEN
+	            #Stat.Query := #SS_ERROR;
+	        ELSIF #Receive_P2P_Instance.NDR THEN
+	            #Stat.Query += 1;
+	            
+	            #FactoryNumber := BYTE_TO_CHAR(#BufferRcv[4]);
+	            FOR #i := 1 TO 10 DO
+	                #FactoryNumber := CONCAT_STRING(IN1 := #FactoryNumber, IN2 := BYTE_TO_CHAR(#BufferRcv[4 + #i]));
+	            END_FOR;
+	        END_IF;
+	        
+	    3:
+	        // Суммарная накопленная энергия
+	        
+	        IF NOT #Enable THEN
+	            #Stat.Query := #SS_STOP;
+	        END_IF;
+	        
+	        "GranSystem_Request"(Address := #Address,
+	                             Function := 4,
+	                             Code := 1,
+	                             Offset := 0,
+	                             Tariff := 0,
+	                             Clarification := 0,
+	                             Buffer := #BufferSend);
+	        
+	        IF #Receive_Reset_Instance.DONE OR #Receive_Reset_Instance.ERROR THEN
+	            #Stat.Query += 1;
+	        END_IF;
+	        
+	    4:
+	        IF NOT #Enable THEN
+	            #Stat.Query := #SS_STOP;
+	        END_IF;
+	        
+	        IF #Receive_P2P_Instance.ERROR OR #Timeout.Q THEN
+	            #Stat.Query := #SS_ERROR;
+	        ELSIF #Receive_P2P_Instance.NDR THEN
+	            #Stat.Query := #SS_DONE;
+	            
+	            #"SumActiveEnergy+" := "WL_4ByteToReal"(Byte0 := #BufferRcv[4],
+	                                                 Byte1 := #BufferRcv[5],
+	                                                 Byte2 := #BufferRcv[6],
+	                                                 Byte3 := #BufferRcv[7]);
+	            #"SumActiveEnergy-" := "WL_4ByteToReal"(Byte0 := #BufferRcv[8],
+	                                                 Byte1 := #BufferRcv[9],
+	                                                 Byte2 := #BufferRcv[10],
+	                                                 Byte3 := #BufferRcv[11]);
+	            #"SumReactiveEnergy+" := "WL_4ByteToReal"(Byte0 := #BufferRcv[12],
+	                                                   Byte1 := #BufferRcv[13],
+	                                                   Byte2 := #BufferRcv[14],
+	                                                   Byte3 := #BufferRcv[15]);
+	            #"SumReactiveEnergy-" := "WL_4ByteToReal"(Byte0 := #BufferRcv[16],
+	                                                   Byte1 := #BufferRcv[17],
+	                                                   Byte2 := #BufferRcv[18],
+	                                                   Byte3 := #BufferRcv[19]);
+	        END_IF;
+	        
+	    #SS_DONE:
+	        // Done
+	        #Stat.Query := #SS_STOP;
+	        
+	    #SS_ERROR:
+	        // Error
+	        #Stat.Query := #SS_STOP;
+	        
+	    ELSE
+	        #Stat.Query := #SS_STOP;
+	END_CASE;
+	
+	#Busy := #Stat.Query > #SS_STOP AND #Stat.Query < #SS_DONE;
+	#Done := #Stat.Query = #SS_DONE;
+	#Error := #Stat.Query = #SS_ERROR;
+	
+	#TonResend(IN := NOT #Stat.Resend AND (#Stat.Query MOD 2 = 0),
+	           PT := #ResendTimeout,
+	           Q => #Stat.Resend);
+	
+	#Timeout(IN := #Stat.Query > 0 AND (#Stat.Query MOD 2 = 0),
+	         PT := #ErrorTimeout);
+	
+	#Send_P2P_Instance(REQ := #Stat.Resend,
+	                   "PORT" := #Port,
+	                   BUFFER := #BufferSend,
+	                   LENGTH := 8);
+	
+	#Receive_Reset_Instance(REQ := (#Stat.Query MOD 2 = 1) AND #Busy,
+	                        "PORT" := #Port);
+END_FUNCTION_BLOCK
+

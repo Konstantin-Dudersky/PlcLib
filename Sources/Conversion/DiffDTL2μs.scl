@@ -1,0 +1,34 @@
+﻿FUNCTION "DiffDTL2μs" : DInt
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      In1 {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;
+      In2 {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;
+   END_VAR
+
+   VAR_TEMP 
+      tempTi : Time;
+      micro1 : UDInt;
+      micro2 : UDInt;
+      diff : DInt;
+   END_VAR
+
+
+BEGIN
+	//#DiffDTL2μs := (#In1.NANOSECOND - #In2.NANOSECOND) / 1000;
+	
+	IF false THEN// #In1 < #In2 then
+	    #DiffDTL2μs := 0;
+	ELSE
+	    // difference in milliseconds
+	    #tempTi := T_DIFF(IN1 := #In1, IN2 := #In2);
+	    
+	    #micro1 := (#In1.NANOSECOND MOD 1_000_000) / 1000;
+	    #micro2 := (#In2.NANOSECOND MOD 1_000_000) / 1000;
+	    
+	    #diff := UDINT_TO_DINT(#micro1) - UDINT_TO_DINT(#micro2);
+	    
+	    #DiffDTL2μs := (TIME_TO_DINT(#tempTi) * 1000 + #diff);
+	END_IF;
+END_FUNCTION
+

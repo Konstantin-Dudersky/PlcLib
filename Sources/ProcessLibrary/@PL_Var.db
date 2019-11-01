@@ -1,0 +1,29 @@
+﻿DATA_BLOCK "@PL_Var"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR 
+      AutModLi : Bool;   // 1 = переключение в автоматический режим
+      AutModOp : Bool;   // 1 = активировать автоматический режим из Op
+      LocalLi : Bool;   // 1 = переключение в местный режим
+      LocalOp : Bool;   // 1 = активировать местный режим из Op
+      LocalSetting : Int;   // Настройка местного режима
+      ManModLi : Bool;   // 1 = переключение в ручной режим
+      ManModOp : Bool;   // 1 = активировать ручной режим из Op
+      ModLiOp : Bool;   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      OosLi : Bool;   // 1 = вывод из эксплуатации
+      OosOp : Bool;   // 1 = вывести из эксплуатации из Op
+      StartAut : Bool;   // 1 = запуск в автоматическом режиме
+      StartLocal : Bool;   // 1 = пуск в местном режиме
+      StartMan : Bool;   // 1 = запуск в ручном режиме
+      StopAut : Bool;   // 1 = останов в автоматическом режиме
+      StopLocal : Bool;   // 1 = стоп в местном режиме
+      StopMan : Bool;   // 1 = останов в ручном режиме
+   END_VAR
+
+
+BEGIN
+   ManModOp := true;
+
+END_DATA_BLOCK
+

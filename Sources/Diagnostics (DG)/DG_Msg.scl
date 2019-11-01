@@ -1,0 +1,118 @@
+﻿FUNCTION_BLOCK "DG_Msg"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      signal : Bool;
+      msgWithAck : Bool := true;
+      msgRank : Int := 2;
+      msgEdgeDetect : Bool;
+      ack : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      pending : Bool;
+      notack : Bool;
+      pendingOrNotack : Bool;
+      msg : "DG_udtMsg";
+   END_VAR
+
+   VAR 
+      stat : Struct
+         prev : Struct
+            ack : Bool;
+            signal : Bool;
+         END_STRUCT;
+      END_STRUCT;
+      SM { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SM_StateMachine";
+   END_VAR
+
+   VAR_TEMP 
+      tempSignal : Bool;
+      Tr : "SM_udtTransitions";
+   END_VAR
+
+   VAR CONSTANT 
+      ST_NOTACT_ACK : Int;
+      ST_ACT_NOTACK : Int := 1;
+      ST_ACT_ACK : Int := 2;
+      ST_NOTACT_NOTACK : Int := 3;
+   END_VAR
+
+
+BEGIN
+	(*
+	Библиотека: LTia
+	Тестировано:
+	Разработано: TIA Portal v13 Sp1 Upd 8
+	Ограничения: вызов в любых OB
+	Требования:
+	    PLC data type: typeMsg
+	    S7-300: загрузочная память - 1394 байт, рабочая память - 1146 байта
+	    S7-1200: загрузочная память - 10651 байт, рабочая память - 618 байта
+	Функциональность:
+	    Обработка сообщения
+	------------------------------------------------------------------------------------------------------------------------
+	Версии:
+	01.00.00 2016-06-01 (Константин Дудерский)
+	    Первая версия
+	01.01.00 2016-06-09 (Константин Дудерский)
+	    Привел в соответствие с новой диаграммой состояний
+	------------------------------------------------------------------------------------------------------------------------
+	Входы:
+	signal - сигнал формирования сообщения
+	msgWithAck - требуется ли квитирование:
+	    false - сообщению не требуется квитирование
+	    true - сообщению требуется квитирование
+	msgRank - класс сообщения:
+	    0 - информационное
+	    1 - предупреждение
+	    2 - авария
+	ack - квитирование
+	
+	Выходы:
+	active - авария активна
+	pending - авария несквитирована
+	activeOrPending - авария или активна, или несквитирована
+	msg - информация о сообщении в формате typeMsg
+	*)
+	
+	// определяем фронт
+	IF #msgEdgeDetect THEN
+	    #tempSignal := #signal AND NOT #stat.prev.signal;
+	ELSE
+	    #tempSignal := #signal;
+	END_IF;
+	
+	"SM_Init"(#Tr);
+	
+	
+	#Tr.t[#ST_NOTACT_ACK, #ST_ACT_NOTACK] := "SM_Trans"(C := #tempSignal AND #msgWithAck, P := 0);
+	#Tr.t[#ST_NOTACT_ACK, #ST_ACT_ACK] := "SM_Trans"(C := #tempSignal AND NOT #msgWithAck, P := 1);
+	
+	#Tr.t[#ST_ACT_NOTACK, #ST_ACT_ACK] := "SM_Trans"(C := #ack AND NOT #stat.prev.ack, P := 0);
+	#Tr.t[#ST_ACT_NOTACK, #ST_NOTACT_NOTACK] := "SM_Trans"(C := NOT #tempSignal, P := 1);
+	
+	#Tr.t[#ST_ACT_ACK, #ST_NOTACT_ACK] := "SM_Trans"(C := NOT #tempSignal, P := 0);
+	
+	#Tr.t[#ST_NOTACT_NOTACK, #ST_NOTACT_ACK] := "SM_Trans"(C := (#ack AND NOT #stat.prev.ack) OR NOT #msgWithAck, P := 0);
+	
+	
+	#SM(Tr := #Tr);
+	
+	
+	// запись выходов
+	#pending := #SM.State = #ST_ACT_NOTACK OR #SM.State = #ST_ACT_ACK;
+	#notack := #SM.State = #ST_ACT_NOTACK OR #SM.State = #ST_NOTACT_NOTACK;
+	#pendingOrNotack := #SM.State = #ST_ACT_NOTACK OR #SM.State = #ST_ACT_ACK OR #SM.State = #ST_NOTACT_NOTACK;
+	
+	// формируем информацию о сообщении
+	#msg.state := #SM.State;
+	#msg.rank := #msgRank;
+	#msg.withAck := #msgWithAck;
+	#msg.edgeDetect := #msgEdgeDetect;
+	
+	// для следующего цикла
+	#stat.prev.ack := #ack;
+	#stat.prev.signal := #signal;
+END_FUNCTION_BLOCK
+

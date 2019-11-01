@@ -1,0 +1,19 @@
+﻿FUNCTION "WL_SwapWordInDword" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_IN_OUT 
+      In : DWord;
+   END_VAR
+
+   VAR_TEMP 
+      tempDw : DWord;
+   END_VAR
+
+
+BEGIN
+	#tempDw.%W0 := #In.%W1;
+	#tempDw.%W1 := #In.%W0;
+	
+	#In := #tempDw;
+END_FUNCTION
+

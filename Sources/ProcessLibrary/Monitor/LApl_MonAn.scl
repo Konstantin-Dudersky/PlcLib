@@ -1,0 +1,533 @@
+﻿FUNCTION_BLOCK "LApl_MonAn"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      PV : "PL_Ana";   // Process value
+      PV_Hyst : Real;   // Hysteresis for PV alarm, warning and tolerance limits
+      PV_AH_Lim : Real := 95.0;   // Limit PV alarm (high)
+      PV_WH_Lim : Real := 90.0;   // Limit PV warning (high)
+      PV_TH_Lim : Real := 85.0;   // Limit PV tolerance message (high)
+      PV_TL_Lim : Real := 15.0;   // Limit PV tolerance message (low)
+      PV_WL_Lim : Real := 10.0;   // Limit PV warning (low)
+      PV_AL_Lim : Real := 5.0;   // Limit PV alarm (low)
+      GradHUpLim : Real := 10.0;   // Gradient monitoring: Limit (high) for positive gradients
+      GradHDnLim : Real := 10.0;   // Gradient monitoring: Limit (high) for negative gradients
+      GradLLim : Real := 1.0;   // Gradient monitoring: Limit (low) for absolute gradients
+      LagTime : Time := T#1s;   // Delay time
+      RstOp : Bool;
+      RstOpHistory : Bool;   // 1 = Operator reset of the gradient's peak values
+      PV_OpScaleHigh : Real := 100.0;
+      PV_OpScaleLow : Real;
+      PV_Unit : Int;
+      DeadBand : Real;   // Width of dead band
+      PV_AH_DC : Time;   // Delay time for incoming alarms for overshoot process values
+      PV_AH_DG : Time;   // Delay time for outgoing alarms for overshoot process values
+      PV_WH_DC : Time;   // Delay time for incoming warnings for overshoot process values
+      PV_WH_DG : Time;   // Delay time for outgoing warnings for overshoot process values
+      PV_TH_DC : Time;   // Delay time for incoming tolerance messages for overshoot process values
+      PV_TH_DG : Time;   // Delay time for outgoing tolerance messages for overshoot process values
+      PV_AL_DC : Time;   // Delay time for incoming PV alarms for undershoot process values
+      PV_AL_DG : Time;   // Delay time for outgoing PV alarms for undershoot process values
+      PV_WL_DC : Time;   // Delay time for incoming PV warnings for undershoot process values
+      PV_WL_DG : Time;   // Delay time for outgoing PV warnings for undershoot process values
+      PV_TL_DC : Time;   // Delay time for incoming PV tolerance messages for undershoot process values
+      PV_TL_DG : Time;   // Delay time for outgoing PV tolerance messages for undershoot process values
+      PV_AH_Severity : Int := 1;   // Категория аварии для уровня AH
+      PV_WH_Severity : Int := 2;   // Категория аварии для уровня WH
+      PV_TH_Severity : Int := 4;   // Категория аварии для уровня TH
+      PV_TL_Severity : Int := 4;   // Категория аварии для уровня TL
+      PV_WL_Severity : Int := 2;   // Категория аварии для уровня WL
+      PV_AL_Severity : Int := 1;   // Категория аварии для уровня AL
+      GradHUp_Severity : Int := 2;
+      GradHDn_Severity : Int := 2;
+      GradL_Severity : Int := 2;
+      PV_AH_En : Bool := true;   // 1 = Enable PV alarm limit (high)
+      PV_WH_En : Bool := true;   // 1 = Enable PV warning limit (high)
+      PV_TH_En : Bool;   // 1 = Enable PV tolerance limit (high)
+      PV_TL_En : Bool;   // 1 = Enable PV tolerance limit (low)
+      PV_WL_En : Bool := true;   // 1 = Enable PV warning limit (low)
+      PV_AL_En : Bool := true;   // 1 = Enable PV alarm limit (low)
+      GradHUpEn : Bool := true;   // 1 = Activate gradient monitoring (high) for positive changes
+      GradHDnEn : Bool := true;   // 1 = Activate gradient monitoring (high) for negative changes
+      GradLEn : Bool;   // 1 = Activate gradient monitoring (low)
+      PV_AH_RstMode : Int;
+      PV_WH_RstMode : Int;
+      PV_TH_RstMode : Int;
+      PV_TL_RstMode : Int;
+      PV_WL_RstMode : Int;
+      PV_AL_RstMode : Int;
+      GradHUp_RstMode : Int;
+      GradHDn_RstMode : Int;
+      GradL_RstMode : Int;
+      CSF_RstMode : Int;
+      OnOp : Bool;
+      OosOp : Bool;
+      OosLi : Bool;
+      PV_AH_MsgEn : Bool := true;   // 1 = Enable PV alarm (high) message
+      PV_WH_MsgEn : Bool := true;   // 1 = Enable PV warning (high) message
+      PV_TH_MsgEn : Bool := true;   // 1 = Enable PV tolerance (high) message
+      PV_TL_MsgEn : Bool := true;   // 1 = Enable PV tolerance (low) message
+      PV_WL_MsgEn : Bool := true;   // 1 = Enable PV warning (low) message
+      PV_AL_MsgEn : Bool := true;   // 1 = Enable PV alarm (low) message
+      GradHUpMsgEn : Bool := true;   // 1 = Activate gradient (high) message for positive changes
+      GradHDnMsgEn : Bool := true;   // 1 = Activate gradient (high) message for negative changes
+      GradLMsgEn : Bool := true;   // 1 = Activate gradient (low) message
+      MsgLock : Bool;   // 1 = Suppress process messages
+      SampleTime : Time := T#100ms;   // Sampling time
+      SimLiOp : Bool;   // Activation/deactivation of the simulation by: 0 = Operator; 1 = Interconnection
+      SimOnLi : Bool;   // 1 = Simulation via interconnection (controlled by SimLiOp = 1)
+      SimOn : Bool;   // 1 = Simulation on
+      SimPV : Real;   // Process value that is used for SimOn = 1
+      SimPV_Li : Real;   // Process value that is used for SimOnLi = 1 (SimLiOp = 1)
+      Sim_Severity : Int := 2;
+      RunUpCyc : Int;
+      CSF : Bool;   // 1 = External error (control system fault)
+      CSF_Severity : Int := 1;
+      Feature : DWord := 2#00000000_00000000_00000000_00000000;   // I/O for additional functions
+      SmoothTi : Time := T#0s;   // Smooth time
+      Var_Period : Int := 60;   // Период контроля изменения, в мин (максимум 60)
+      Var_En : Bool := true;   // Разрешить контроль изменения
+   END_VAR
+
+   VAR_OUTPUT 
+      PV_Out : "PL_Ana";   // Output for process value
+      PV_Grad : Real;   // Gradient value
+      PV_GradPP : Real;   // Gradient maximum peak value
+      PV_GradNP : Real;   // Gradient minimum peak value
+      PV_AH_Act : Bool;   // 1 = PV alarm (high) active
+      PV_WH_Act : Bool;   // 1 = PV warning (high) active
+      PV_TH_Act : Bool;   // 1 = PV tolerance message (high) active
+      PV_TL_Act : Bool;   // 1 = PV tolerance message (low) active
+      PV_WL_Act : Bool;   // 1 = PV warning (low) active
+      PV_AL_Act : Bool;   // 1 = PV alarm (low) active
+      PV_HysOut : Real;   // Hysteresis for PV alarm, output
+      PV_AH_Out : Real;   // PV - alarm limit (high) output
+      PV_WH_Out : Real;   // Limit PV warning (high) output
+      PV_TH_Out : Real;   // PV tolerance limit (high) output
+      PV_TL_Out : Real;   // PV tolerance limit (low) output
+      PV_WL_Out : Real;   // Limit PV warning (low) output
+      PV_AL_Out : Real;   // PV - alarm limit (low) output
+      SumMsgAct : Bool;   // 1 = Group message is active
+      GradHUpAct : Bool;   // 1 = Gradient alarm (high) for positive changes
+      GradHDnAct : Bool;   // 1 = Gradient alarm (high) for negative changes
+      GradLAct : Bool;   // 1 = Low gradient alarm
+      OosAct : Bool;
+      OnAct : Bool;
+      ErrorNum : Int;
+      Var_Min : Int;   // Контроль изменения, минимум
+      Var_Max : Int;   // Контроль изменения, максимум
+      msg_sum : "DG_udtMsgSum";
+   END_VAR
+
+   VAR 
+      stat : Struct
+         old : Struct
+            PV_Out : "PL_Ana";
+            Var_lastStoredMinute : Int;
+         END_STRUCT;
+         "Var" : Array[0..#VAR_SIZE] of Struct
+            Min : Int;
+            Max : Int;
+         END_STRUCT;
+      END_STRUCT;
+      instDerivative : "LApl_Derivative";
+      instFeature : "LApl_Aux_FeatureBitsReorder_obsolete";
+      instAH : "LApl_Aux_LimitMonitoring";
+      instWH : "LApl_Aux_LimitMonitoring";
+      instTH : "LApl_Aux_LimitMonitoring";
+      instTL : "LApl_Aux_LimitMonitoring";
+      instWL : "LApl_Aux_LimitMonitoring";
+      instAL : "LApl_Aux_LimitMonitoring";
+      instMsgCSF : "DG_Msg";
+      instGradHUp : "LApl_Aux_LimitMonitoring";
+      instGradHDn : "LApl_Aux_LimitMonitoring";
+      instGradL : "LApl_Aux_LimitMonitoring";
+      instMsgSim : "DG_Msg";
+      instMode : "PL_Aux_OperatingModes";
+   END_VAR
+
+   VAR_TEMP 
+      i : Int;
+      tempPercent : Int;
+   END_VAR
+
+   VAR CONSTANT 
+      VAR_SIZE : Int := 60;
+   END_VAR
+
+
+BEGIN
+	(*
+	RstMode - определяет тип квитирования:
+	    0 - не требуется квитирование
+	    1 - квитирование нужно только для сообщений
+	    2 - квитирование нужно и для сообщений, и для рабочих точек (Act)
+	*)
+	(*
+	region mode
+	    #instMode(OosLi := #OosLi,
+	              ManAct_OnAct => #OnAct,
+	              OosAct => #OosAct,
+	              ManModOp_OnOp := #OnOp,
+	              OosOp := #OosOp);
+	end_region
+	
+	region check SP
+	    
+	end_region
+	
+	#PV_Out.ST := #PV.ST;
+	
+	// фича
+	#instFeature(FeatureIn := #Feature);
+	
+	region simulation
+	    // симуляция значения
+	    if not #SimLiOp and #SimOn then
+	        #PV.Value := #SimPV;
+	        #PV_Out.ST := 16#60;
+	    else
+	        #SimPV := #PV.Value;
+	    end_if;
+	    if #SimLiOp and #SimOnLi then
+	        #PV.Value := #SimPV_Li;
+	        #PV_Out.ST := 16#60;
+	    end_if;
+	    
+	    // симуляция
+	    #instMsgSim(msgWithAck := false,
+	                msgRank := #Sim_Severity,
+	                signal := #PV_Out.ST = 16#60);
+	end_region
+	
+	
+	// сглаживание
+	if TIME_TO_DINT(#SmoothTi) > 0 then
+	    #PV_Out.Value := #PV.Value + (#stat.old.PV_Out.Value - #PV.Value) * EXP_REAL(-1 * DINT_TO_REAL(TIME_TO_DINT(#SampleTime)) / DINT_TO_REAL(TIME_TO_DINT(#SmoothTi)));
+	else
+	    #PV_Out.Value := #PV.Value;
+	end_if;
+	
+	// зона нечувствительности
+	if ABS(#PV_Out.Value) < #DeadBand then
+	    #PV_Out.Value := 0;
+	end_if;
+	
+	region gradient
+	    // расчет градиента
+	    region derivative
+	        #instDerivative(In := #PV_Out,
+	                        OutHiLim := 1.0e38,
+	                        OutLoLim := -1.0e38,
+	                        TD := T#1s,
+	                        SampleTime := #SampleTime,
+	                        LagTime := #LagTime);
+	        #PV_Grad := #instDerivative.Out.Value;
+	    end_region
+	    
+	    region max min
+	        if #PV_Grad > #PV_GradPP then
+	            #PV_GradPP := #PV_Grad;
+	        end_if;
+	        if #PV_Grad < #PV_GradNP then
+	            #PV_GradNP := #PV_Grad;
+	        end_if;
+	        if #RstOpHistory then
+	            #PV_GradPP := 0;
+	            #PV_GradNP := 0;
+	        end_if;
+	    end_region
+	    
+	    region alarms
+	        #instGradHUp(Value := #PV_Grad,
+	                     Lim := #GradHUpLim,
+	                     Hyst := 0,
+	                     DC := T#0ms,
+	                     DG := T#0ms,
+	                     SampleTime := #SampleTime,
+	                     RstMode := #GradHUp_RstMode,
+	                     Msg_Severity := #GradHUp_Severity,
+	                     Rst := #RstOp,
+	                     Enable := #GradHUpEn,
+	                     MsgEn := #GradHUpMsgEn,
+	                     MsgLock := #MsgLock,
+	                     Feature_Bit28 := #instFeature.Bit[28],
+	                     Feature_Bit29 := #instFeature.Bit[29],
+	                     high := true,
+	                     Act => #GradHUpAct);
+	        
+	        #instGradHDn(Value := #PV_Grad,
+	                     Lim := -1 * #GradHDnLim,
+	                     Hyst := 0,
+	                     DC := T#0ms,
+	                     DG := T#0ms,
+	                     SampleTime := #SampleTime,
+	                     RstMode := #GradHDn_RstMode,
+	                     Msg_Severity := #GradHDn_Severity,
+	                     Rst := #RstOp,
+	                     Enable := #GradHDnEn,
+	                     MsgEn := #GradHDnMsgEn,
+	                     MsgLock := #MsgLock,
+	                     Feature_Bit28 := #instFeature.Bit[28],
+	                     Feature_Bit29 := #instFeature.Bit[29],
+	                     high := false,
+	                     Act => #GradHDnAct);
+	        
+	        #instGradL(Value := ABS(#PV_Grad),
+	                   Lim := #GradLLim,
+	                   Hyst := 0,
+	                   DC := T#0ms,
+	                   DG := T#0ms,
+	                   SampleTime := #SampleTime,
+	                   RstMode := #GradL_RstMode,
+	                   Msg_Severity := #GradL_Severity,
+	                   Rst := #RstOp,
+	                   Enable := #GradLEn,
+	                   MsgEn := #GradLMsgEn,
+	                   MsgLock := #MsgLock,
+	                   Feature_Bit28 := #instFeature.Bit[28],
+	                   Feature_Bit29 := #instFeature.Bit[29],
+	                   high := false,
+	                   Act => #GradLAct);
+	    end_region
+	end_region
+	
+	region limit monitoring
+	    region AH
+	        #instAH(Value := #PV_Out.Value,
+	                Lim := #PV_AH_Lim,
+	                Hyst := #PV_Hyst,
+	                DC := #PV_AH_DC,
+	                DG := #PV_AH_DG,
+	                SampleTime := #SampleTime,
+	                RstMode := #PV_AH_RstMode,
+	                Msg_Severity := #PV_AH_Severity,
+	                Rst := #RstOp,
+	                Enable := #PV_AH_En,
+	                MsgEn := #PV_AH_MsgEn,
+	                MsgLock := #MsgLock,
+	                Feature_Bit28 := #instFeature.Bit[28],
+	                Feature_Bit29 := #instFeature.Bit[29],
+	                high := true,
+	                Act => #PV_AH_Act);
+	    end_region
+	    
+	    region WH
+	        #instWH(Value := #PV_Out.Value,
+	                Lim := #PV_WH_Lim,
+	                Hyst := #PV_Hyst,
+	                DC := #PV_WH_DC,
+	                DG := #PV_WH_DG,
+	                SampleTime := #SampleTime,
+	                RstMode := #PV_WH_RstMode,
+	                Msg_Severity := #PV_WH_Severity,
+	                Rst := #RstOp,
+	                Enable := #PV_WH_En,
+	                MsgEn := #PV_WH_MsgEn,
+	                MsgLock := #MsgLock,
+	                Feature_Bit28 := #instFeature.Bit[28],
+	                Feature_Bit29 := #instFeature.Bit[29],
+	                high := true,
+	                Act => #PV_WH_Act);
+	    end_region
+	    
+	    region TH
+	        #instTH(Value := #PV_Out.Value,
+	                Lim := #PV_TH_Lim,
+	                Hyst := #PV_Hyst,
+	                DC := #PV_TH_DC,
+	                DG := #PV_TH_DG,
+	                SampleTime := #SampleTime,
+	                RstMode := #PV_TH_RstMode,
+	                Msg_Severity := #PV_TH_Severity,
+	                Rst := #RstOp,
+	                Enable := #PV_TH_En,
+	                MsgEn := #PV_TH_MsgEn,
+	                MsgLock := #MsgLock,
+	                Feature_Bit28 := #instFeature.Bit[28],
+	                Feature_Bit29 := #instFeature.Bit[29],
+	                high := true,
+	                Act => #PV_TH_Act);
+	    end_region
+	    
+	    region TL
+	        #instTL(Value := #PV_Out.Value,
+	                Lim := #PV_TL_Lim,
+	                Hyst := #PV_Hyst,
+	                DC := #PV_TL_DC,
+	                DG := #PV_TL_DG,
+	                SampleTime := #SampleTime,
+	                RstMode := #PV_TL_RstMode,
+	                Msg_Severity := #PV_TL_Severity,
+	                Rst := #RstOp,
+	                Enable := #PV_TL_En,
+	                MsgEn := #PV_TL_MsgEn,
+	                MsgLock := #MsgLock,
+	                Feature_Bit28 := #instFeature.Bit[28],
+	                Feature_Bit29 := #instFeature.Bit[29],
+	                high := false,
+	                Act => #PV_TL_Act);
+	    end_region
+	    
+	    region WL
+	        #instWL(Value := #PV_Out.Value,
+	                Lim := #PV_WL_Lim,
+	                Hyst := #PV_Hyst,
+	                DC := #PV_WL_DC,
+	                DG := #PV_WL_DG,
+	                SampleTime := #SampleTime,
+	                RstMode := #PV_WL_RstMode,
+	                Msg_Severity := #PV_WL_Severity,
+	                Rst := #RstOp,
+	                Enable := #PV_WL_En,
+	                MsgEn := #PV_WL_MsgEn,
+	                MsgLock := #MsgLock,
+	                Feature_Bit28 := #instFeature.Bit[28],
+	                Feature_Bit29 := #instFeature.Bit[29],
+	                high := false,
+	                Act => #PV_WL_Act);
+	    end_region
+	    
+	    region AL
+	        #instAL(Value := #PV_Out.Value,
+	                Lim := #PV_AL_Lim,
+	                Hyst := #PV_Hyst,
+	                DC := #PV_AL_DC,
+	                DG := #PV_AL_DG,
+	                SampleTime := #SampleTime,
+	                RstMode := #PV_AL_RstMode,
+	                Msg_Severity := #PV_AL_Severity,
+	                Rst := #RstOp,
+	                Enable := #PV_AL_En,
+	                MsgEn := #PV_AL_MsgEn,
+	                MsgLock := #MsgLock,
+	                Feature_Bit28 := #instFeature.Bit[28],
+	                Feature_Bit29 := #instFeature.Bit[29],
+	                high := false,
+	                Act => #PV_AL_Act);
+	    end_region
+	    
+	end_region
+	
+	
+	#PV_HysOut := #PV_Hyst;
+	#PV_AH_Out := #PV_AH_Lim;
+	#PV_WH_Out := #PV_WH_Lim;
+	#PV_TH_Out := #PV_TH_Lim;
+	#PV_TL_Out := #PV_TL_Lim;
+	#PV_WL_Out := #PV_WL_Lim;
+	#PV_AL_Out := #PV_AL_Lim;
+	
+	
+	region alarms
+	    // CSF
+	    #instMsgCSF(msgWithAck := #CSF_RstMode > 0,
+	                ack := #RstOp,
+	                msgRank := #CSF_Severity,
+	                signal := #CSF);
+	    
+	    if #instFeature.Bit[28] and #MsgLock then
+	        #GradHUpAct := false;
+	        #GradHDnAct := false;
+	        #GradLAct := false;
+	    end_if;
+	    
+	    // суммарная авария
+	    #SumMsgAct := #GradHUpAct or #GradHDnAct or #GradLAct or #CSF
+	    or #instAH.SumMsgAct or #instWH.SumMsgAct or #instWL.SumMsgAct or #instAL.SumMsgAct;
+	    
+	    if #instFeature.Bit[29] then
+	        #GradHUpAct := not #GradHUpAct;
+	        #GradHDnAct := not #GradHDnAct;
+	        #GradLAct := not #GradLAct;
+	    end_if;
+	end_region
+	
+	region variability
+	    // ограничиваем значение PV_Out
+	    if #PV_Out.Value > #PV_OpScaleHigh then
+	        #tempPercent := 100;
+	    elsif #PV_Out.Value < #PV_OpScaleLow then
+	        #tempPercent := 0;
+	    else
+	        #tempPercent := REAL_TO_INT(100 * #PV_Out.Value / (#PV_OpScaleHigh - #PV_OpScaleLow));
+	    end_if;
+	    
+	    // сброс массива значений
+	    if #RstOpHistory then
+	        #stat.Var[0].Min := #tempPercent;
+	        #stat.Var[0].Max := #tempPercent;
+	        for #i := 1 to #VAR_SIZE do
+	            #stat.Var[#i].Min := 100;
+	            #stat.Var[#i].Max := 0;
+	        end_for;
+	    end_if;
+	    
+	    if #Var_En then
+	        if #stat.old.Var_lastStoredMinute <> "PL".CurrentTime.minute then
+	            // изменилось значение минуты
+	            if "PL".CurrentTime.minute - #stat.old.Var_lastStoredMinute <> 1 then
+	                // разница между новым и старым временем изменилась более чем на 1 минуту
+	                for #i := 0 to #VAR_SIZE do
+	                    #stat.Var[#i].Min := 100;
+	                    #stat.Var[#i].Max := 0;
+	                end_for;
+	            else
+	                for #i := #Var_Period to 1 by -1 do
+	                    #stat.Var[#i] := #stat.Var[#i - 1];
+	                end_for;
+	                #stat.Var[0].Min := #stat.Var[0].Max := #tempPercent;
+	            end_if;
+	        else
+	            if #tempPercent < #stat.Var[0].Min then
+	                #stat.Var[0].Min := #tempPercent;
+	            end_if;
+	            if #tempPercent > #stat.Var[0].Max then
+	                #stat.Var[0].Max := #tempPercent;
+	            end_if;
+	        end_if;
+	        #stat.old.Var_lastStoredMinute := "PL".CurrentTime.minute;
+	        
+	        // находим минимум и максимум
+	        #Var_Min := #stat.Var[0].Min;
+	        #Var_Max := #stat.Var[0].Max;
+	        for #i := 1 to #Var_Period do
+	            if #stat.Var[#i].Min < #Var_Min then
+	                #Var_Min := #stat.Var[#i].Min;
+	            end_if;
+	            if #stat.Var[#i].Max > #Var_Max then
+	                #Var_Max := #stat.Var[#i].Max;
+	            end_if;
+	        end_for;
+	    else
+	        #Var_Min := #tempPercent;
+	        #Var_Max := #tempPercent;
+	    end_if;
+	end_region
+	
+	#RstOp := false;
+	#RstOpHistory := false;
+	
+	#msg_sum := "DG_MsgCollect"(maxIndex := 10,
+	                         msg0 := #instAH.msg,
+	                         msg1 := #instWH.msg,
+	                         msg2 := #instTH.msg,
+	                         msg3 := #instTL.msg,
+	                         msg4 := #instWL.msg,
+	                         msg5 := #instAL.msg,
+	                         msg6 := #instGradHUp.msg,
+	                         msg7 := #instGradHDn.msg,
+	                         msg8 := #instGradL.msg,
+	                         msg9 := #instMsgCSF.msg,
+	                         msg10 := #instMsgSim.msg,
+	                         msg11 := "MsgConst".nullMsg,
+	                         msg12 := "MsgConst".nullMsg,
+	                         msg13 := "MsgConst".nullMsg,
+	                         msg14 := "MsgConst".nullMsg,
+	                         msg15 := "MsgConst".nullMsg);
+	
+	// для следующего цикла
+	#stat.old.PV_Out := #PV_Out;
+ automatically inserted *)
+END_FUNCTION_BLOCK
+

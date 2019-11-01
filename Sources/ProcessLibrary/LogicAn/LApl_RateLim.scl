@@ -1,0 +1,169 @@
+﻿FUNCTION_BLOCK "LApl_RateLim"
+{ S7_Optimized_Access := 'FALSE' }
+FAMILY : LogicAn
+VERSION : 0.1
+   VAR_INPUT 
+      In : "PL_Ana";   // Analog Input Value
+      InScaleHigh : Real := 100.0;   // Input Signal Ramp Scale
+      InScaleLow : Real;   // Input Signal Ramp Scale
+      UpRaLim : Real := 3.0;   // Positive Ramp Rate Value
+      DnRaLim : Real := 3.0;   // Negative Ramp Rate Value
+      RateOn : Bool;   // Ramp Rate Enable/Disable
+      RmpOn : Bool;   // 1= Activate ramp to ramp target RmpTarget
+      RmpModTime : Bool;   // 1= Use time (RmpTime) for ramp, 0= Use rates UpRaLim, DnRaLim
+      RmpTime : Time;   // Time for ramp from current value up to RmpTarget
+      RmpTarget : "PL_Ana";   // Target value for ramp
+      SampleTime : Time := T#100ms;   // Sample Time
+      Feature : DWord := 2#00000000_00000000_00000000_00000000;
+      FirstScan : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      Out : "PL_Ana";   // Ramp Output
+      UpRaAct : Bool;   // Positive Ramping Active
+      DnRaAct : Bool;   // Negative Ramping Active
+      ErrorNum : Int := -1;   // Error Number
+   END_VAR
+
+   VAR 
+      stat : Struct
+         old : Struct
+            RmpTarget : Real;
+         END_STRUCT;
+         state : "typeSM";
+         increment : Real;
+      END_STRUCT;
+      SnErr : Int;
+      SxFirstStart : Bool := true;
+      SxRmpOn : Bool;
+      SrGradient : Real;
+      SrTimeFact : Real := 1.0;
+      SrStartRmp : Real;
+      SrRmpTarget : Real;
+      SrRestRmp : Real;
+      Sar_reserve : Array[0..7] of Byte;
+      instFeature : "LApl_Aux_FeatureBitsReorder_obsolete";
+   END_VAR
+
+   VAR_TEMP 
+      tempReal : Real;
+      nInfErr : Int;
+      xUpRaAct : Bool;
+      xDnRaAct : Bool;
+      rUpRaLim : Real;
+      rDnRaLim : Real;
+      rDiff : Real;
+      rTemp : Real;
+      rOut : Real;
+      xFeatStartupWithOutInit : Bool;
+      xFeatEuPercentRateChange : Bool;
+   END_VAR
+
+   VAR CONSTANT 
+      MS_IN_S : DInt := 1000;
+      ST_EQUAL : Int := 0;
+      ST_CALC : Int := 1;
+      ST_RAMP : Int := 2;
+   END_VAR
+
+
+BEGIN
+	#instFeature(FeatureIn := #Feature);
+	
+	IF #FirstScan THEN
+	    #FirstScan := false;
+	    IF NOT #instFeature.Bit[0] THEN
+	        #Out.Value := 0;
+	        #Out.ST := 16#80;
+	        #UpRaAct := false;
+	        #DnRaAct := false;
+	        #SrRmpTarget := #RmpTarget.Value;
+	        #SxRmpOn := false;
+	    END_IF;
+	ELSE
+	    #ErrorNum := 0;
+	    #xUpRaAct := false;
+	    #xDnRaAct := false;
+	    #Out.ST := #In.ST;
+	    IF #instFeature.Bit[8] THEN
+	        #rUpRaLim := (#InScaleHigh - #InScaleLow) * (#UpRaLim / 100.0);
+	        #rDnRaLim := (#InScaleHigh - #InScaleLow) * (#DnRaLim / 100.0);
+	    ELSE
+	        #rUpRaLim := #UpRaLim;
+	        #rDnRaLim := #DnRaLim;
+	    END_IF;
+	    IF ((NOT (#SxRmpOn)) AND #RmpOn) OR (#RmpTarget.Value <> #SrRmpTarget) THEN
+	        #SrStartRmp := #Out.Value;
+	        #SrRestRmp := 0;
+	    END_IF;
+	    IF #RmpOn THEN
+	        #Out.ST := #RmpTarget.ST;
+	        IF #RmpModTime THEN
+	            IF #RmpTime > T#0ms THEN
+	                #rDiff := ((#RmpTarget.Value - #SrStartRmp) * DINT_TO_REAL(#SampleTime)) / DINT_TO_REAL(#RmpTime);
+	            ELSE
+	                #rDiff := #RmpTarget.Value - #SrStartRmp;
+	                #RmpTime := T#0ms;
+	            END_IF;
+	        ELSE
+	            IF (#RmpTarget.Value - #SrStartRmp) > 0 THEN
+	                #rDiff := ABS(#rUpRaLim) * DINT_TO_REAL(#SampleTime) / 1000;
+	            ELSE
+	                #rDiff := - ABS(#rDnRaLim) * DINT_TO_REAL(#SampleTime) / 1000;
+	            END_IF;
+	        END_IF;
+	        #rTemp := #SrRestRmp + #rDiff;
+	        #rOut := #rTemp + #Out.Value;
+	        #SrRestRmp := (#Out.Value - #rOut) + #rTemp;
+	        IF ((#rOut <= #RmpTarget.Value) AND (#rDiff <= 0)) OR ((#rOut >= #RmpTarget.Value) AND (#rDiff >= 0)) THEN
+	            #SxRmpOn := true;
+	            #Out.Value := #RmpTarget.Value;
+	        ELSE
+	            IF #rDiff >= 0.0 THEN
+	                #xUpRaAct := true;
+	            END_IF;
+	            IF #rDiff <= 0.0 THEN
+	                #xDnRaAct := true;
+	            END_IF;
+	            #Out.Value := #rOut;
+	        END_IF;
+	    ELSIF #RateOn THEN
+	        // ограничение наклона
+	        IF #InScaleHigh >= #InScaleLow THEN
+	            #rDiff := #In.Value - #Out.Value;
+	            IF #rDiff >= 0.0 THEN
+	                IF #UpRaLim <> 0.0 THEN
+	                    #SrGradient := ABS(#rUpRaLim) * DINT_TO_REAL(#SampleTime) / 1000;
+	                    IF #rDiff > #SrGradient THEN
+	                        #xUpRaAct := true;
+	                    END_IF;
+	                END_IF;
+	            ELSE
+	                IF #DnRaLim <> 0.0 THEN
+	                    #SrGradient := - ABS(#rDnRaLim) * DINT_TO_REAL(#SampleTime) / 1000;
+	                    IF #rDiff < #SrGradient THEN
+	                        #xDnRaAct := true;
+	                    END_IF;
+	                END_IF;
+	            END_IF;
+	            IF #xUpRaAct OR #xDnRaAct THEN
+	                #rTemp := #SrRestRmp + #SrGradient;
+	                #rOut := #rTemp + #Out.Value;
+	                #SrRestRmp := #Out.Value - #rOut + #rTemp;
+	                #Out.Value := #rOut;
+	            ELSE
+	                #Out.Value := #In.Value;
+	                #SrRestRmp := 0.0;
+	            END_IF;
+	        END_IF;
+	    ELSE
+	        #Out.Value := #In.Value;
+	        #SrRestRmp := 0.0;
+	    END_IF;
+	    #UpRaAct := #xUpRaAct;
+	    #DnRaAct := #xDnRaAct;
+	    #SrRmpTarget := #RmpTarget.Value;
+	    #SxRmpOn := #RmpOn;
+	END_IF;
+END_FUNCTION_BLOCK
+

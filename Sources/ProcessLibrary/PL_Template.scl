@@ -1,0 +1,11 @@
+﻿FUNCTION_BLOCK "PL_Template"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      BlockIcon { S7_HiddenAssignment := 'Hide'} : Int := 1;   // Номер иконки при генерации визуализации
+   END_VAR
+
+
+BEGIN
+END_FUNCTION_BLOCK
+

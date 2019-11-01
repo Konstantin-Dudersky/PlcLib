@@ -1,0 +1,156 @@
+﻿FUNCTION_BLOCK "SF_Equivalent"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_ChannelA { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_SafeBool";
+      S_ChannelB { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_SafeBool";
+      DiscrepancyTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_EquivalentOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_SafeBool";
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      ErrorId { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
+   END_VAR
+
+   VAR 
+      SM { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SM_StateMachine";
+   END_VAR
+
+   VAR_TEMP 
+      Tr : "SM_udtTransitions";
+   END_VAR
+
+   VAR CONSTANT 
+      ST_IDLE : Int;
+      ST_INIT : Int := 1;
+      ST_WAITB : Int := 2;
+      ST_WAITA : Int := 3;
+      ST_ERROR12 : Int := 4;
+      ST_ENABLE : Int := 7;
+      ST_WAITFROMACTIVE : Int := 6;
+      ST_ERROR3 : Int := 5;
+   END_VAR
+
+
+BEGIN
+	(*
+	========================================================================================================================
+	(company)
+	(c)Copyright (year) All Rights Reserved
+	------------------------------------------------------------------------------------------------------------------------
+	Library:       Safety
+	Tested with:   (target system with FW Version)
+	Engineering:   TIA Portal v15.1
+	Restrictions:  (OB types, etc.)
+	Requirements:
+	    Load memory: 31088 Bytes
+	    Work memory: 1299 Bytes
+	Functionality: This function block converts two equivalent SAFEBOOL inputs (both NO or NC) to one SAFEBOOL output, 
+	including discrepancy time monitoring. This FB should not be used stand-alone since it has no restart interlock. 
+	It is required to connect the output to other safety related functionalities. 
+	------------------------------------------------------------------------------------------------------------------------
+	Change log table:
+	Version  Date       Expert in charge Changes applied
+	01.00.00 dd.mm.yyyy (name of expert) First released version
+	========================================================================================================================
+	ErrorId:
+	16#1 - general errors:
+	    16#C010 - Discrepancy time elapsed in state 8004
+	    16#C020 - Discrepancy time elapsed in state 8014
+	    16#C030 - Discrepancy time elapsed in state 8005
+	    
+	16#2 - StateMachine
+	*)
+	
+	"SM_Init"(#Tr);
+	
+	#Tr.t[#ST_IDLE, #ST_INIT] := "SM_Trans"(P := 0, C := #Activate);
+	
+	#Tr.t[#ST_INIT, #ST_IDLE] := "SM_Trans"(P := 0, C := NOT #Activate);
+	#Tr.t[#ST_INIT, #ST_WAITB] := "SM_Trans"(P := 1, C := #S_ChannelA.Value AND NOT #S_ChannelB.Value);
+	#Tr.t[#ST_INIT, #ST_WAITA] := "SM_Trans"(P := 2, C := NOT #S_ChannelA.Value AND #S_ChannelB.Value);
+	#Tr.t[#ST_INIT, #ST_ENABLE] := "SM_Trans"(P := 3, C := #S_ChannelA.Value AND #S_ChannelB.Value);
+	
+	#Tr.t[#ST_WAITB, #ST_IDLE] := "SM_Trans"(P := 0, C := NOT #Activate);
+	#Tr.t[#ST_WAITB, #ST_ERROR12] := "SM_Trans"(P := 1, C := #SM.StateTime >= #DiscrepancyTime);
+	#Tr.t[#ST_WAITB, #ST_INIT] := "SM_Trans"(P := 2, C := NOT #S_ChannelA.Value);
+	#Tr.t[#ST_WAITB, #ST_ENABLE] := "SM_Trans"(P := 3, C := #S_ChannelB.Value);
+	
+	#Tr.t[#ST_WAITA, #ST_IDLE] := "SM_Trans"(P := 0, C := NOT #Activate);
+	#Tr.t[#ST_WAITA, #ST_ERROR12] := "SM_Trans"(P := 1, C := #SM.StateTime >= #DiscrepancyTime);
+	#Tr.t[#ST_WAITA, #ST_INIT] := "SM_Trans"(P := 2, C := NOT #S_ChannelB.Value);
+	#Tr.t[#ST_WAITA, #ST_ENABLE] := "SM_Trans"(P := 3, C := #S_ChannelA.Value);
+	
+	#Tr.t[#ST_ERROR12, #ST_IDLE] := "SM_Trans"(P := 0, C := NOT #Activate);
+	#Tr.t[#ST_ERROR12, #ST_INIT] := "SM_Trans"(P := 1, C := NOT #S_ChannelA.Value AND NOT #S_ChannelB.Value);
+	
+	#Tr.t[#ST_ENABLE, #ST_IDLE] := "SM_Trans"(P := 0, C := NOT #Activate);
+	#Tr.t[#ST_ENABLE, #ST_WAITFROMACTIVE] := "SM_Trans"(P := 1, C := #S_ChannelA.Value XOR #S_ChannelB.Value);
+	#Tr.t[#ST_ENABLE, #ST_INIT] := "SM_Trans"(P := 2, C := NOT #S_ChannelA.Value AND NOT #S_ChannelB.Value);
+	
+	#Tr.t[#ST_WAITFROMACTIVE, #ST_IDLE] := "SM_Trans"(P := 0, C := NOT #Activate);
+	#Tr.t[#ST_WAITFROMACTIVE, #ST_ERROR3] := "SM_Trans"(P := 1, C := #SM.StateTime >= #DiscrepancyTime);
+	#Tr.t[#ST_WAITFROMACTIVE, #ST_INIT] := "SM_Trans"(P := 2, C := NOT #S_ChannelA.Value AND NOT #S_ChannelB.Value);
+	
+	#Tr.t[#ST_ERROR3, #ST_IDLE] := "SM_Trans"(P := 0, C := NOT #Activate);
+	#Tr.t[#ST_ERROR3, #ST_INIT] := "SM_Trans"(P := 1, C := NOT #S_ChannelA.Value AND NOT #S_ChannelB.Value);
+	
+	#SM(Tr := #Tr);
+	
+	IF #SM.Error THEN
+	    "DG_BlockError"(Sub        := 16#2,
+	                    SubErrorId := #SM.ErrorId,
+	                    ErrorId    := #ErrorId);
+	END_IF;
+	
+	
+	CASE #SM.State OF
+	    #ST_IDLE:
+	        #DiagCode := 16#0000;
+	        
+	    #ST_ENABLE:
+	        #DiagCode := 16#8000;
+	        
+	    #ST_INIT:
+	        #DiagCode := 16#8801;
+	        
+	    #ST_WAITB:
+	        #DiagCode := 16#8802;
+	        
+	    #ST_WAITA:
+	        #DiagCode := 16#8804;
+	        
+	    #ST_WAITFROMACTIVE:
+	        #DiagCode := 16#8806;
+	        
+	    #ST_ERROR12:
+	        IF #SM.StateFirstCall THEN
+	            IF #SM.StatePrev = #ST_WAITB THEN
+	                #DiagCode := 16#C010;
+	            ELSIF #SM.StatePrev = #ST_WAITA THEN
+	                #DiagCode := 16#C020;
+	            END_IF;
+	        END_IF;
+	
+	    #ST_ERROR3:
+	        #DiagCode := 16#C030;
+	        
+	END_CASE;
+	
+	#Ready := #SM.State <> #ST_IDLE;
+	#S_EquivalentOut.Value := #SM.State = #ST_ENABLE;
+	#SafetyDemand := #SM.State = #ST_INIT OR #SM.State = #ST_WAITB OR #SM.State = #ST_WAITA OR #SM.State = #ST_WAITFROMACTIVE;
+	#Error := #DiagCode = 16#C010 OR #DiagCode = 16#C020 OR #DiagCode = 16#C030 OR #SM.Error;
+	
+	IF #DiagCode.%B1 = 16#C0 THEN
+	    "DG_BlockError"(Sub        := 16#1,
+	                    SubErrorId := #DiagCode,
+	                    ErrorId    := #ErrorId);
+	END_IF;
+END_FUNCTION_BLOCK
+

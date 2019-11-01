@@ -1,0 +1,83 @@
+﻿FUNCTION_BLOCK "DG_SaveStatusWord"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;   // 1 = error in block execution
+      Status { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   // Status word
+      RstOp { ExternalVisible := 'False'} : Bool;   // Reset buffer
+   END_VAR
+
+   VAR_OUTPUT RETAIN
+      Buffer { ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..#MAX_INDEX] of Struct
+         Timestamp {InstructionName := 'DTL'; LibVersion := '1.0'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DTL;
+         Status { ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      END_STRUCT;
+   END_VAR
+
+   VAR 
+      Stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         Prev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            Status { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+         END_STRUCT;
+      END_STRUCT;
+   END_VAR
+
+   VAR_TEMP 
+      Temp : Struct
+         Found : Bool;
+         Timestamp {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;
+      END_STRUCT;
+      TempInt : Int;
+      i : Int;
+   END_VAR
+
+   VAR CONSTANT 
+      MAX_INDEX : Int := 9;
+   END_VAR
+
+
+BEGIN
+	(*
+	If block has not Error parameter, that stay Error = true
+	*)
+	
+	IF #RstOp THEN
+	    #RstOp := false;
+	    FOR #i := 0 TO #MAX_INDEX DO
+	        #Buffer[#i].Status := 16#0;
+	        #Buffer[#i].Timestamp := DTL#1970-01-01-00:00:00.0;
+	    END_FOR;
+	END_IF;
+	
+	
+	IF #Error = 1 AND #Status <> #Stat.Prev.Status AND #Status <> 16#0 THEN
+	    
+	    // define Timestamp
+	    #TempInt := RD_LOC_T(#Temp.Timestamp);
+	    
+	    #Temp.Found := false;
+	    FOR #i := 0 TO #MAX_INDEX DO
+	        IF #Buffer[#i].Status = 16#0 THEN
+	            #Buffer[#i].Status := #Status;
+	            #Buffer[#i].Timestamp := #Temp.Timestamp;
+	            #Temp.Found := true;
+	            EXIT;
+	        END_IF;
+	    END_FOR;
+	    
+	    // buffer full
+	    // shift up one position and save current status in last
+	    IF NOT #Temp.Found THEN
+	        FOR #i := 0 TO #MAX_INDEX - 1 DO
+	            #Buffer[#i] := #Buffer[#i + 1];
+	        END_FOR;
+	        #Buffer[#MAX_INDEX].Status := #Status;
+	        #Buffer[#MAX_INDEX].Timestamp := #Temp.Timestamp;
+	    END_IF;
+	END_IF;
+	
+	
+	// for next cycle
+	#Stat.Prev.Status := #Status;
+END_FUNCTION_BLOCK
+

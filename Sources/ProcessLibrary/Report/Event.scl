@@ -1,0 +1,236 @@
+﻿FUNCTION_BLOCK "Event"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Ack { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Acknowledge alarms
+      Lock { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // 1 = Lock alarms
+      In1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In3 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In4 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In5 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In6 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In7 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In8 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In9 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In10 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In11 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In12 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In13 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In14 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In15 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      In16 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      Out { ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      EventState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EventState";
+   END_VAR
+
+   VAR 
+      "OCM#In1Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In1WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In1Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 1
+      "OCM#In2Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In2WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In2Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 2
+      "OCM#In3Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In3WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In3Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 3
+      "OCM#In4Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In4WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In4Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 4
+      "OCM#In5Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In5WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In5Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 5
+      "OCM#In6Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In6WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In6Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 6
+      "OCM#In7Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In7WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In7Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 7
+      "OCM#In8Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In8WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In8Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 8
+      "OCM#In9Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In9WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In9Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 9
+      "OCM#In10Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In10WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In10Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 10
+      "OCM#In11Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In11WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In11Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 11
+      "OCM#In12Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In12WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In12Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 12
+      "OCM#In13Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In13WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In13Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 13
+      "OCM#In14Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In14WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In14Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 14
+      "OCM#In15Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In15WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In15Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 15
+      "OCM#In16Class" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 0;
+      "OCM#In16WithAck" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      "OCM#In16Text" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Char;   // Message 16
+      State { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..15] of Int;
+      PrevAck { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      tIn : Array[0..15] of Bool;
+      tInWithAck : Array[0..15] of Bool;
+      tInClass : Array[0..15] of UInt;
+      i : Int;
+      tEventStateInUnack : Array[0..31] of Bool;
+      tEventStateInAck : Array[0..31] of Bool;
+      tEventStateOutUnack : Array[0..31] of Bool;
+      tOut : Array[0..15] of Bool;
+      tDword : DWord;
+   END_VAR
+
+   VAR CONSTANT 
+      ST_OutAck : Int;
+      ST_InUnack : Int := 1;
+      ST_InAck : Int := 2;
+      ST_OutUnack : Int := 3;
+   END_VAR
+
+
+BEGIN
+	#tIn[0] := #In1;
+	#tIn[1] := #In2;
+	#tIn[2] := #In3;
+	#tIn[3] := #In4;
+	#tIn[4] := #In5;
+	#tIn[5] := #In6;
+	#tIn[6] := #In7;
+	#tIn[7] := #In8;
+	#tIn[8] := #In9;
+	#tIn[9] := #In10;
+	#tIn[10] := #In11;
+	#tIn[11] := #In12;
+	#tIn[12] := #In13;
+	#tIn[13] := #In14;
+	#tIn[14] := #In15;
+	#tIn[15] := #In16;
+	
+	// messages locked
+	IF #Lock THEN
+	    FOR #i := 0 TO 15 DO
+	        #tIn[#i] := false;
+	    END_FOR;
+	END_IF;
+	
+	#tInWithAck[0] := #"OCM#In1WithAck";
+	#tInWithAck[1] := #"OCM#In2WithAck";
+	#tInWithAck[2] := #"OCM#In3WithAck";
+	#tInWithAck[3] := #"OCM#In4WithAck";
+	#tInWithAck[4] := #"OCM#In5WithAck";
+	#tInWithAck[5] := #"OCM#In6WithAck";
+	#tInWithAck[6] := #"OCM#In7WithAck";
+	#tInWithAck[7] := #"OCM#In8WithAck";
+	#tInWithAck[8] := #"OCM#In9WithAck";
+	#tInWithAck[9] := #"OCM#In10WithAck";
+	#tInWithAck[10] := #"OCM#In11WithAck";
+	#tInWithAck[11] := #"OCM#In12WithAck";
+	#tInWithAck[12] := #"OCM#In13WithAck";
+	#tInWithAck[13] := #"OCM#In14WithAck";
+	#tInWithAck[14] := #"OCM#In15WithAck";
+	#tInWithAck[15] := #"OCM#In16WithAck";
+	
+	#tInClass[0] := #"OCM#In1Class";
+	#tInClass[1] := #"OCM#In2Class";
+	#tInClass[2] := #"OCM#In3Class";
+	#tInClass[3] := #"OCM#In4Class";
+	#tInClass[4] := #"OCM#In5Class";
+	#tInClass[5] := #"OCM#In6Class";
+	#tInClass[6] := #"OCM#In7Class";
+	#tInClass[7] := #"OCM#In8Class";
+	#tInClass[8] := #"OCM#In9Class";
+	#tInClass[9] := #"OCM#In10Class";
+	#tInClass[10] := #"OCM#In11Class";
+	#tInClass[11] := #"OCM#In12Class";
+	#tInClass[12] := #"OCM#In13Class";
+	#tInClass[13] := #"OCM#In14Class";
+	#tInClass[14] := #"OCM#In15Class";
+	#tInClass[15] := #"OCM#In16Class";
+	
+	#tDword := 16#0;
+	SCATTER(IN := #tDword,
+	        OUT => #tEventStateInAck);
+	SCATTER(IN := #tDword,
+	        OUT => #tEventStateInUnack);
+	SCATTER(IN := #tDword,
+	        OUT => #tEventStateOutUnack);
+	
+	
+	FOR #i := 0 TO 15 DO
+	    
+	    IF #tInClass[#i] = 0 THEN
+	        #State[#i] := #ST_OutAck;
+	    ELSE
+	        CASE #State[#i] OF
+	            #ST_OutAck:
+	                // сигнала нет, квитировано
+	                IF #tIn[#i] THEN
+	                    IF #tInWithAck[#i] THEN
+	                        #State[#i] := #ST_InUnack;
+	                    ELSE
+	                        #State[#i] := #ST_InAck;
+	                    END_IF;
+	                END_IF;
+	                
+	            #ST_InUnack:
+	                // сигнал есть, неквитировано
+	                IF NOT #tIn[#i] THEN
+	                    #State[#i] := #ST_OutUnack;
+	                ELSIF #Ack AND NOT #PrevAck THEN
+	                    #State[#i] := #ST_InAck;
+	                END_IF;
+	                
+	                #tEventStateInUnack[#tInClass[#i] - 1] := true;
+	                
+	            #ST_InAck:
+	                // сигнал есть, квитировано
+	                IF NOT #tIn[#i] THEN
+	                    #State[#i] := #ST_OutAck;
+	                END_IF;
+	                
+	                #tEventStateInAck[#tInClass[#i] - 1] := true;
+	                
+	            #ST_OutUnack:
+	                // сигнала нет, неквитировано
+	                IF #Ack AND NOT #PrevAck THEN
+	                    #State[#i] := #ST_OutAck;
+	                END_IF;
+	                
+	                #tEventStateOutUnack[#tInClass[#i] - 1] := true;
+	                
+	        END_CASE;
+	    END_IF;
+	    
+	END_FOR;
+	
+	
+	FOR #i:= 0 TO 15 DO
+	    #tOut[#i] := #State[#i] > 0;
+	END_FOR;
+	GATHER(IN := #tOut,
+	       OUT => #Out);
+	
+	GATHER(IN := #tEventStateInUnack,
+	       OUT => #EventState.InUnack);
+	GATHER(IN := #tEventStateInAck,
+	       OUT => #EventState.InAck);
+	GATHER(IN := #tEventStateOutUnack,
+	       OUT => #EventState.OutUnack);
+	
+	
+	// для следующего цикла
+	#PrevAck := #Ack;
+END_FUNCTION_BLOCK
+

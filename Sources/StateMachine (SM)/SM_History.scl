@@ -1,0 +1,73 @@
+﻿FUNCTION_BLOCK "SM_History"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      RstOp { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Clear buffer
+   END_VAR
+
+   VAR_OUTPUT 
+      History { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..#MAX_HISTORY] of Struct
+         PrevState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+         State { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+         Timestamp {InstructionName := 'DTL'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DTL;
+      END_STRUCT;
+   END_VAR
+
+   VAR_IN_OUT 
+      StateMachine : "SM_StateMachine";
+   END_VAR
+
+   VAR_TEMP 
+      Temp : Struct
+         Found : Bool;
+      END_STRUCT;
+      i : Int;
+      tempInt : Int;
+      tempDTL {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;
+   END_VAR
+
+   VAR CONSTANT 
+      MAX_HISTORY : Int := 9;
+   END_VAR
+
+
+BEGIN
+	// очистка истории
+	IF #RstOp THEN
+	    #RstOp := false;
+	    
+	    FOR #i := 0 TO #MAX_HISTORY DO
+	        #History[#i].PrevState := 0;
+	        #History[#i].State := 0;
+	        #History[#i].Timestamp := DTL#1970-01-01-00:00:00;
+	    END_FOR;
+	END_IF;
+	
+	// последний вызов блока
+	IF #StateMachine.StateLastCall THEN
+	    #tempInt := RD_LOC_T(#tempDTL);
+	    #Temp.Found := false;
+	    
+	    // ищем незанятую запись
+	    FOR #i := 0 TO #MAX_HISTORY DO
+	        IF #History[#i].PrevState = #History[#i].State THEN
+	            #History[#i].PrevState := #StateMachine.State;
+	            #History[#i].State := #StateMachine.StateNext;
+	            #History[#i].Timestamp := #tempDTL;
+	            #Temp.Found := true;
+	            EXIT;
+	        END_IF;
+	    END_FOR;
+	    
+	    // буфер заполнен, сдвигаем записи и переписываем последнюю
+	    IF NOT #Temp.Found THEN
+	        FOR #i := 1 TO #MAX_HISTORY DO
+	            #History[#i - 1] := #History[#i];
+	        END_FOR;
+	        #History[#MAX_HISTORY].PrevState := #StateMachine.State;
+	        #History[#MAX_HISTORY].State := #StateMachine.StateNext;
+	        #History[#MAX_HISTORY].Timestamp := #tempDTL;
+	    END_IF;
+	END_IF;
+END_FUNCTION_BLOCK
+

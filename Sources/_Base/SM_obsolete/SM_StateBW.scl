@@ -1,0 +1,17 @@
+﻿FUNCTION "SM_StateBW" : Bool
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      "begin" : Int;
+      end : Int;
+   END_VAR
+
+   VAR_IN_OUT 
+      inst : "typeSM";
+   END_VAR
+
+
+BEGIN
+	#SM_StateBW := (#inst.state >= #begin) AND (#inst.state <= #end);
+END_FUNCTION
+

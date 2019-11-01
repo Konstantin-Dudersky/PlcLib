@@ -1,0 +1,25 @@
+﻿FUNCTION "IO_DprdatToQC" : USInt
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Status : DWord;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         W : Word;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	#temp.W.%B0 := #Status.%B1;
+	#temp.W.%B1 := #Status.%B2;
+	
+	IF #temp.W = 16#0 THEN
+	    #IO_DprdatToQC := "PL".QC.good;
+	ELSE
+	    #IO_DprdatToQC := "PL".QC.badDev;
+	END_IF;
+END_FUNCTION
+

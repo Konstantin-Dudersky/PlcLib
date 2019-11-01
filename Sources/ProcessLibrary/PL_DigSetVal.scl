@@ -1,0 +1,16 @@
+﻿FUNCTION "PL_DigSetVal" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      ToValue : Bool;
+   END_VAR
+
+   VAR_IN_OUT 
+      Value : Byte;
+   END_VAR
+
+
+BEGIN
+	#Value.%X7 := #ToValue;
+END_FUNCTION
+

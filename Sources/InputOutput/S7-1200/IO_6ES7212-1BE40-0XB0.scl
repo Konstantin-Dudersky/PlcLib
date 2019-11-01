@@ -1,0 +1,83 @@
+﻿FUNCTION_BLOCK "IO_6ES7212-1BE40-0XB0"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      hw_id_digital { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : HW_SUBMODULE;
+      hw_id_analog { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : HW_SUBMODULE;
+      "DQa.0" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DQa.1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DQa.2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DQa.3" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DQa.4" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DQa.5" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+   END_VAR
+
+   VAR_OUTPUT 
+      "DIa.0" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DIa.1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DIa.2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DIa.3" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DIa.4" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DIa.5" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DIa.6" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      "DIa.7" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      AI0 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;
+      AI1 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;
+   END_VAR
+
+   VAR 
+      instGETIO {InstructionName := 'GETIO'; LibVersion := '1.1'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : GETIO;
+      instSETIO {InstructionName := 'SETIO'; LibVersion := '1.2'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : SETIO;
+      inputs_digital { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..7] of Bool;
+      outputs_digital { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..7] of Bool;
+      inputs_analog { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..1] of Int;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         W : Word;
+         QC : USInt;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	REGION DI
+	    #instGETIO(ID := #hw_id_digital,
+	               INPUTS := #inputs_digital);
+	    
+	    #temp.QC := "IO_DprdatToQC"(#instGETIO.STATUS);
+	    
+	    #"DIa.0" := "PL_DigAddQC"(Value := #inputs_digital[0], QC := #temp.QC);
+	    #"DIa.1" := "PL_DigAddQC"(Value := #inputs_digital[1], QC := #temp.QC);
+	    #"DIa.2" := "PL_DigAddQC"(Value := #inputs_digital[2], QC := #temp.QC);
+	    #"DIa.3" := "PL_DigAddQC"(Value := #inputs_digital[3], QC := #temp.QC);
+	    #"DIa.4" := "PL_DigAddQC"(Value := #inputs_digital[4], QC := #temp.QC);
+	    #"DIa.5" := "PL_DigAddQC"(Value := #inputs_digital[5], QC := #temp.QC);
+	    #"DIa.6" := "PL_DigAddQC"(Value := #inputs_digital[6], QC := #temp.QC);
+	    #"DIa.7" := "PL_DigAddQC"(Value := #inputs_digital[7], QC := #temp.QC);
+	END_REGION
+	
+	REGION DQ
+	    #outputs_digital[0] := "PL_DigValue"(#"DQa.0");
+	    #outputs_digital[1] := "PL_DigValue"(#"DQa.1");
+	    #outputs_digital[2] := "PL_DigValue"(#"DQa.2");
+	    #outputs_digital[3] := "PL_DigValue"(#"DQa.3");
+	    #outputs_digital[4] := "PL_DigValue"(#"DQa.4");
+	    #outputs_digital[5] := "PL_DigValue"(#"DQa.5");
+	    
+	    #instSETIO(ID := #hw_id_digital,
+	                       OUTPUTS := #outputs_digital);
+	END_REGION
+	
+	REGION AI
+	    #instGETIO(ID := #hw_id_analog,
+	               INPUTS := #inputs_analog);
+	    
+	    #temp.QC := "IO_DprdatToQC"(#instGETIO.STATUS);
+	    
+	    #AI0 := "PL_AnaAddQC"(Value := INT_TO_REAL(#inputs_analog[0]), QC := #temp.QC);
+	    #AI1 := "PL_AnaAddQC"(Value := INT_TO_REAL(#inputs_analog[1]), QC := #temp.QC);
+	END_REGION
+END_FUNCTION_BLOCK
+

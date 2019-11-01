@@ -1,0 +1,1736 @@
+﻿FUNCTION_BLOCK "MotL"
+TITLE = 'Motor - Large'
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : AdvLib90
+FAMILY : Drives
+NAME : MotL
+VERSION : 5.0
+   VAR_INPUT 
+      StartAut { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Start: Start Command in Auto Mode
+      StopAut { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Stop: Stop Command in Auto Mode
+      StartMan { CFC_Visible := 'false'} : Bool;   // 1=Start: Start Command in Manual Mode
+      StopMan { CFC_Visible := 'false'} : Bool;   // 1=Stop: Stop Command in Manual Mode
+      ModLiOp { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Link/Auto,0=Manual: Input to Auto/Manual Commands
+      AutModOp { CFC_Visible := 'false'} : Bool;   // 1=Auto Mode: Auto Mode by Operator
+      ManModOp { CFC_Visible := 'false'} : Bool := TRUE;   // 1=Manual Mode: Manual Mode by Operator
+      AutModLi { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Auto Mode: Auto Mode by Linked or SFC
+      ManModLi { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Manual Mode: Manual Mode by Linked or SFC
+      LocalLi : Byte := 16#0A;   // 1=Local Mode: Local Operation by Field Signal
+      LocalOp { CFC_Visible := 'false'} : Bool;   // 1=Local Mode: Local Operation by Operator
+      MS_RelOp { CFC_Visible := 'false'} : Bool;   // Operator input for MS Release, 1: MS release requirement
+      OosOp { CFC_Visible := 'false'} : Bool;   // 1=Oos Mode: Oos Mode by Operator
+      OosLi { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Oos Mode: Oos Mode by Field Signal
+      StartLocal : Byte := 16#0A;   // 1=Start Local: Field Start Signal
+      StopLocal : Byte := 16#0A;   // 1=Stop Local: Field Stop Signal
+      LocalSetting { CFC_Visible := 'false'} : Int;   // Local Mode Behavior
+      FbkRun { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Run,0=Stop: Feedback of Control Output
+      Monitor { CFC_ForTest := 'true'} : Bool := TRUE;   // 1=Monitor ON, 0=Monitor OFF: Feedback Monitor
+      MonTiStatic : Real := 3.0;   // Monitoring Time of Feedback [s]
+      MonTiDynamic : Real := 3.0;   // Monitoring Time of Feedback on starting or on change in control output [s]
+      MonTiDyStop : Real := 3.0;   // Monitoring Time of Feedback on stopping in control output [s]
+      IdleTime { CFC_Visible := 'false'} : Real := 5.0;   // Stop Time
+      PulseWidth { CFC_Visible := 'false'} : Real := 3.0;   // Control Output Start/Stop Pulse Width [s]
+      WarnTiMan { CFC_Visible := 'false'} : Real;   // Warning Time Prior to Motor Start [s]
+      WarnTiAut { CFC_Visible := 'false'} : Real;   // Warning Time Prior to Motor Start [s]
+      RapidStp { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Bool;   // 1 = Motor Rapid Stop command
+      RstOp { CFC_Visible := 'false'} : Bool;   // Operator Reset Signal
+      RstLi { CFC_ForTest := 'true'} : Byte := 16#0A;   // Linked Reset Signal
+      BypProt { CFC_Visible := 'false'} : Bool;   // Bypass Protection in Sim/Local Modes
+      Trip { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Motor Healthy State, 0=Motor Tripped Signal
+      Permit { CFC_ForTest := 'true'} : Byte := 16#8F;   // 1=Permit is OK, 0=Not Allowed to Activate Motor
+      Perm_En { CFC_Visible := 'false'} : Bool := TRUE;   // 1=Permit enabled, 0=Permit disabled
+      Intlock { CFC_ForTest := 'true'} : Byte := 16#8F;   // 0=Motor is Interlocked, 1=Motor is Not Interlocked
+      Intl_En { CFC_Visible := 'false'} : Bool := TRUE;   // 1=Interlock enabled, 0=Interlock disabled
+      Protect { CFC_ForTest := 'true'} : Byte := 16#8F;   // 0=Protection is active, 1= Protection is not active
+      Prot_En { CFC_Visible := 'false'} : Bool := TRUE;   // 1=Protection enabled, 0=Protection disabled
+      StartForce { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Start: Start Command in Forced Operation
+      StopForce { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Stop: Stop Command in Forced Operation
+      UserAna1 { CFC_Visible := 'false'} : Real := 16#0000000F;   // User Analog Input 1
+      UA1unit { CFC_Visible := 'false'} : Int;   // Unit of UserAna1
+      UserAna2 { CFC_Visible := 'false'} : Real := 16#0000000F;   // User Analog Input 2
+      UA2unit { CFC_Visible := 'false'} : Int;   // Unit of UserAna2
+      StartChnST { CFC_ForTest := 'true'} : Byte := 16#0F;   // Output channel state of Start
+      MsgLock { CFC_Visible := 'false'} : Byte := 16#0A;   // Inhibit process message
+      SampleTime { CFC_Visible := 'false'; CFC_Interconnectable := 'false'; CFC_Configurable := 'false'} : Real := 0.1;   // Sampling Time [s]
+      SimLiOp { CFC_Visible := 'false'} : Byte := 16#0A;   // Simulation on/off via 0 = Operator, 1 = Interconnection or SFC
+      SimOnLi { CFC_Visible := 'false'} : Byte := 16#0A;   // 1 = Simulation activated by interconnection or SFC (controlled by SimLiOp = 1)
+      SimOn { CFC_Visible := 'false'} : Bool;   // Simulation On/Off
+      RunUpCyc { CFC_Visible := 'false'} : Int := 3;   // Number of cycles for which all messages are suppressed
+      BatchEn { CFC_Visible := 'false'} : Bool;   // Enable Remote Operation of Controller by Batch Recipe
+      BatchID { CFC_Visible := 'false'} : DWord;   // Current Batch ID (number)
+      BatchName { CFC_Visible := 'false'} : String[32];   // Current Batch Name
+      StepNo { CFC_Visible := 'false'} : DWord;   // Batch Step Number
+      Occupied { CFC_Visible := 'false'} : Bool;   // Occupied by Batch
+      FaultExt { CFC_ForTest := 'true'} : Byte := 16#0A;   // External Error
+      CSF { CFC_ForTest := 'true'} : Byte := 16#0A;   // Control System Fault Message - External Error
+      SimAV { CFC_Visible := 'false'} : Real;   // AV Simulation Value, tracks when not in simulation
+      SimAV_Li { CFC_Visible := 'false'} : Real := 16#0000000A;   // Linkable simulation value AV
+      AV_AH_Lim { CFC_Visible := 'false'} : Real := 95.0;   // AV - High Alarm Limit
+      AV_WH_Lim { CFC_Visible := 'false'} : Real := 90.0;   // AV - High Warning Limit
+      AV_TH_Lim { CFC_Visible := 'false'} : Real := 85.0;   // AV - High Tolerance Limit
+      AV_TL_Lim { CFC_Visible := 'false'} : Real := 15.0;   // AV - Low Tolerance Limit
+      AV_WL_Lim { CFC_Visible := 'false'} : Real := 10.0;   // AV - Low Warning Limit
+      AV_AL_Lim { CFC_Visible := 'false'} : Real := 5.0;   // AV - Low Alarm Limit
+      AV_Hyst { CFC_Visible := 'false'} : Real := 1.0;   // AV - Hysteresis
+      ExtMsg1 { CFC_Visible := 'false'} : Byte := 16#0A;   // External Message 1
+      ExtMsg2 { CFC_Visible := 'false'} : Byte := 16#0A;   // External Message 2
+      ExtMsg3 { CFC_Visible := 'false'} : Byte := 16#0A;   // External Message 3
+      UserStatus { CFC_Visible := 'false'} : Byte;   // User Status Bits
+      OS_Perm { CFC_Visible := 'false'} : Struct   // Operator Permissions
+         Bit0 : Bool := TRUE;   // 1 = Operator can shift to automatic mode
+         Bit1 : Bool := TRUE;   // 1 = Operator can shift to manual mode
+         Bit2 : Bool := TRUE;   // 1 = Operator can shift to local mode
+         Bit3 : Bool := TRUE;   // 1 = Operator can shift to out of service mode
+         Bit4 : Bool := TRUE;   // 1 = Operator can stop the motor
+         Bit5 : Bool := TRUE;   // 1 = Operator can start the motor
+         Bit6 : Bool := TRUE;   // Reserved
+         Bit7 : Bool := TRUE;   // 1 = Operator can reset the motor
+         Bit8 : Bool := TRUE;   // 1 = Operator can define the monitoring time for control start or change
+         Bit9 : Bool := TRUE;   // 1 = Operator can define the monitoring time for status
+         Bit10 : Bool := TRUE;   // 1 = Operator can activate the function monitoring time (bits 8 & 9)
+         Bit11 : Bool := TRUE;   // 1 = Operator can enable function simulation
+         Bit12 : Bool := TRUE;   // 1 = Operator can enable function maintenance release
+         Bit13 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high alarm
+         Bit14 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high warning
+         Bit15 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high tolerance
+         Bit16 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for hysteresis
+         Bit17 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low alarm
+         Bit18 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low warning
+         Bit19 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low tolerance
+         Bit20 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_AH_MsgEn
+         Bit21 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_WH_MsgEn
+         Bit22 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_TH_MsgEn
+         Bit23 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_TL_MsgEn
+         Bit24 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_WL_MsgEn
+         Bit25 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_AL_MsgEn
+         Bit26 : Bool := TRUE;   // 1 = Operator can change the simulation value SimAV
+         Bit27 : Bool := TRUE;   // Reserved
+         Bit28 : Bool := TRUE;   // Reserved
+         Bit29 : Bool := TRUE;   // Reserved
+         Bit30 : Bool := TRUE;   // 1 = Operator can define the monitoring time for control stop
+         Bit31 : Bool := TRUE;   // 1 = Operator can execute the rapid stop
+      END_STRUCT;
+      OpSt_In { CFC_Visible := 'false'} : DWord;   // Enabled operator stations
+      Feature { CFC_Visible := 'false'} : Struct   // Status of various features
+         Bit0 : Bool;   // 0 = Start up with defined initializing in OB100; 1 = keep last stored values
+         Bit1 : Bool;   // 1 = OosLi can switch to Out of Service
+         Bit2 : Bool;   // 1 = Resetting the commands for changing the mode
+         Bit3 : Bool;   // 1 = Enabling resetting of commands for the control settings
+         Bit4 : Bool;   // 0 = Button mode; 1 = Switch mode
+         Bit5 : Bool;   // Reserved
+         Bit6 : Bool;   // Reserved
+         Bit7 : Bool;   // Reserved
+         Bit8 : Bool;   // Reserved
+         Bit9 : Bool;   // 1 = Resetting interlock via automatic input signals in automatic mode
+         Bit10 : Bool;   // 1 = Switch to the last setting of Auto/Man mode when local mode is exited
+         Bit11 : Bool;   // 1 = Tracking feedback signals in simulation mode with delay
+         Bit12 : Bool;   // Reserved
+         Bit13 : Bool;   // 1 = Separate monitoring time for motor stopping
+         Bit14 : Bool;   // 1 = Enable rapid stop
+         Bit15 : Bool;   // Reserved
+         Bit16 : Bool;   // Reserved
+         Bit17 : Bool;   // 1 = Enabling bumpless changeover to automatic mode for valves and motors
+         Bit18 : Bool;   // 1 = Motor, valve or dosage switch to External error if CSF is active
+         Bit19 : Bool;   // 1 = Resettable even if Protection or Motor Protection is active
+         Bit20 : Bool;   // 1 = Disable calculation of impulse controls in local settings 2 & 4
+         Bit21 : Bool;   // 1 = Enabling bumpless changeover to automatic mode only for operator
+         Bit22 : Bool;   // 1 = Enable message state actualization
+         Bit23 : Bool;   // Reserved
+         Bit24 : Bool;   // 1 = Local authorization active
+         Bit25 : Bool;   // 1 = Suppress all messages if MsgLock = 1
+         Bit26 : Bool;   // 1 = Reset switching points if switching to Out of Service
+         Bit27 : Bool;   // 1 = Interlock monitoring in faceplate standard view if LocalSetting = 2 or 4
+         Bit28 : Bool;   // 1 = Disable switching points if MsgLock =1
+         Bit29 : Bool;   // 1 = Signal Value =0 (0 active) if limit is violated
+         Bit30 : Bool;   // 1 = Resetting interlock via input signal in autom. via faceplate in manual mode
+         Bit31 : Bool;   // 1 = Resetting Protection/Errors in manual mode
+      END_STRUCT;
+      Feature2 { CFC_Visible := 'false'} : Struct   // Status of various features
+         Bit0 : Bool;   // Reserved
+         Bit1 : Bool;   // Reserved
+         Bit2 : Bool;   // 1 = Separate evaluation of bypassed and simulated interlock signals
+         Bit3 : Bool;   // 1 = In case of invalid input command the control changes to rest position
+         Bit4 : Bool;   // 0 = Button mode; 1 = Switch mode (Local Command)
+         Bit5 : Bool;   // 1=Ignore bad signal state in interlock signals
+         Bit6 : Bool;   // Reserved
+         Bit7 : Bool;   // Reserved
+         Bit8 : Bool;   // 1 = Forcing in local mode
+         Bit9 : Bool;   // Reserved
+         Bit10 : Bool;   // 1 = Block goes to rest position if one of the automatic command is bad
+         Bit11 : Bool;   // Reserved
+         Bit12 : Bool;   // Reserved
+         Bit13 : Bool;   // Reserved
+         Bit14 : Bool;   // Reserved
+         Bit15 : Bool;   // Reserved
+         Bit16 : Bool;   // Reserved
+         Bit17 : Bool;   // Reserved
+         Bit18 : Bool;   // Reserved
+         Bit19 : Bool;   // Reserved
+         Bit20 : Bool;   // Reserved
+         Bit21 : Bool;   // Reserved
+         Bit22 : Bool;   // Reserved
+         Bit23 : Bool;   // Reserved
+         Bit24 : Bool;   // Reserved
+         Bit25 : Bool;   // Reserved
+         Bit26 : Bool;   // Reserved
+         Bit27 : Bool;   // Reserved
+         Bit28 : Bool;   // Reserved
+         Bit29 : Bool;   // Reserved
+         Bit30 : Bool;   // Reserved
+         Bit31 : Bool;   // Reserved
+      END_STRUCT;
+      EnAcquire { CFC_ForTest := 'true'; CFC_Configurable := 'true'} : Bool := TRUE;   // Reserved
+      AcquireId { CFC_Visible := 'false'} : DWord;   // Reserved
+      AcRequest { CFC_Visible := 'false'; CFC_EnumerationTexts := 'ES_AcquireTypes'} : Byte;   // Reserved
+      AcPriority { CFC_Visible := 'false'} : Byte;   // Reserved
+      AcWaitTmMax { CFC_Visible := 'false'} : Real;   // Reserved
+      AcSafeOrMsk { CFC_Visible := 'false'} : DWord;   // Reserved
+      AcSafeNotMsk { CFC_Visible := 'false'} : DWord;   // Reserved
+      AcAcquireId { CFC_Visible := 'false'} : DWord;   // Reserved
+   END_VAR
+
+   VAR_OUTPUT 
+      MS_Release : Byte := 16#0A;   // 1: MS release
+      MonDynErr { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // Feedback Error on starting or on change in control output
+      MonDynStopErr { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // Feedback Error on stopping in control output
+      MonStaErr { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // Feedback Error on unexpected feedback change
+      CurrMon { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DInt;   // Current time of monitoring [s]
+      R_StpAct { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // 1 = Rapid stop is active
+      LockAct { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // 1 = Interlock (Permit, Interlock or Protect) or Trip is active
+      GrpErr { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1 = Group error is active
+      RdyToStart { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1 = ready to start
+      RdyToReset { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1 = ready to reset via RstLi or automatic commands
+      WarnAct { CFC_ForTest := 'true'} : Byte := 16#0A;   // Warning Prior to Motor Start in Auto/Manual Mode
+      Start { CFC_ForTest := 'true'} : Byte := 16#0A;   // Control Output to Start
+      P_Start { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // Pulsive Control Output to Start
+      P_Stop { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#8A;   // Pulsive Control Output to Stop
+      P_Rst { CFC_ForTest := 'true'; CFC_Visible := 'false'} : Byte := 16#0A;   // Reset Impulse
+      LocalAct { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Motor in Local Operation Mode: Local Mode Indicator
+      AutAct { CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Auto: Automatic Mode Indicator
+      ManAct { CFC_ForTest := 'true'} : Byte := 16#8A;   // Manual Value is active
+      OosAct { CFC_ForTest := 'true'} : Byte := 16#0A;   // Out of service is active
+      FbkRunOut { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Byte := 16#0A;   // 1=Run, 0=Stop: Feedback of Control Output
+      Run { CFC_Visible := 'false'} : Byte := 16#0A;   // 1= Motor running
+      Stop { CFC_Visible := 'false'} : Byte := 16#0A;   // 1= Motor STOP
+      OS_PermOut { CFC_Visible := 'false'} : Struct   // Operator Permission: Output for OS
+         Bit0 : Bool := TRUE;   // 1 = Operator can shift to automatic mode
+         Bit1 : Bool := TRUE;   // 1 = Operator can shift to manual mode
+         Bit2 : Bool := TRUE;   // 1 = Operator can shift to local mode
+         Bit3 : Bool := TRUE;   // 1 = Operator can shift to out of service mode
+         Bit4 : Bool := TRUE;   // 1 = Operator can stop the motor
+         Bit5 : Bool := TRUE;   // 1 = Operator can start the motor
+         Bit6 : Bool := TRUE;   // Reserved
+         Bit7 : Bool := TRUE;   // 1 = Operator can reset the motor
+         Bit8 : Bool := TRUE;   // 1 = Operator can define the monitoring time for control start or change
+         Bit9 : Bool := TRUE;   // 1 = Operator can define the monitoring time for status
+         Bit10 : Bool := TRUE;   // 1 = Operator can activate the function monitoring time (bits 8 & 9)
+         Bit11 : Bool := TRUE;   // 1 = Operator can enable function simulation
+         Bit12 : Bool := TRUE;   // 1 = Operator can enable function maintenance release
+         Bit13 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high alarm
+         Bit14 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high warning
+         Bit15 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high tolerance
+         Bit16 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for hysteresis
+         Bit17 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low alarm
+         Bit18 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low warning
+         Bit19 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low tolerance
+         Bit20 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_AH_MsgEn
+         Bit21 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_WH_MsgEn
+         Bit22 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_TH_MsgEn
+         Bit23 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_TL_MsgEn
+         Bit24 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_WL_MsgEn
+         Bit25 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_AL_MsgEn
+         Bit26 : Bool := TRUE;   // 1 = Operator can change the simulation value SimAV
+         Bit27 : Bool := TRUE;   // Reserved
+         Bit28 : Bool := TRUE;   // Reserved
+         Bit29 : Bool := TRUE;   // Reserved
+         Bit30 : Bool := TRUE;   // 1 = Operator can define the monitoring time for control stop
+         Bit31 : Bool := TRUE;   // 1 = Operator can execute the rapid stop
+      END_STRUCT;
+      OS_PermOut_atDw { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT OS_PermOut : DWord;
+      OS_PermLog { CFC_Visible := 'false'} : Struct   // Operator Permission: Output for OS
+         Bit0 : Bool := TRUE;   // 1 = Operator can shift to automatic mode
+         Bit1 : Bool := TRUE;   // 1 = Operator can shift to manual mode
+         Bit2 : Bool := TRUE;   // 1 = Operator can shift to local mode
+         Bit3 : Bool := TRUE;   // 1 = Operator can shift to out of service mode
+         Bit4 : Bool := TRUE;   // 1 = Operator can stop the motor
+         Bit5 : Bool := TRUE;   // 1 = Operator can start the motor
+         Bit6 : Bool := TRUE;   // Reserved
+         Bit7 : Bool := TRUE;   // 1 = Operator can reset the motor
+         Bit8 : Bool := TRUE;   // 1 = Operator can define the monitoring time for control start or change
+         Bit9 : Bool := TRUE;   // 1 = Operator can define the monitoring time for status
+         Bit10 : Bool := TRUE;   // 1 = Operator can activate the function monitoring time (bits 8 & 9)
+         Bit11 : Bool := TRUE;   // 1 = Operator can enable function simulation
+         Bit12 : Bool := TRUE;   // 1 = Operator can enable function maintenance release
+         Bit13 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high alarm
+         Bit14 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high warning
+         Bit15 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for high tolerance
+         Bit16 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for hysteresis
+         Bit17 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low alarm
+         Bit18 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low warning
+         Bit19 : Bool := TRUE;   // 1 = Operator can alter the limit (AV) for low tolerance
+         Bit20 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_AH_MsgEn
+         Bit21 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_WH_MsgEn
+         Bit22 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_TH_MsgEn
+         Bit23 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_TL_MsgEn
+         Bit24 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_WL_MsgEn
+         Bit25 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AV_AL_MsgEn
+         Bit26 : Bool := TRUE;   // 1 = Operator can change the simulation value SimAV
+         Bit27 : Bool := TRUE;   // Reserved
+         Bit28 : Bool := TRUE;   // Reserved
+         Bit29 : Bool := TRUE;   // Reserved
+         Bit30 : Bool := TRUE;   // 1 = Operator can define the monitoring time for control stop
+         Bit31 : Bool := TRUE;   // 1 = Operator can execute the rapid stop
+      END_STRUCT;
+      OS_PermLog_atDw { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT OS_PermLog : DWord;
+      OpSt_Out { CFC_Visible := 'false'} : DWord;   // Enabled operator stations
+      ST_Worst { CFC_Visible := 'false'} : Byte := BYTE#16#80;   // Worst Signal Status
+      AutoST { CFC_Visible := 'false'} : Byte := BYTE#16#80;   // Worst Signal Status of the automatic commands
+      Status1 { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DWord;   // Status1 Word
+      Status2 { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DWord;   // Status2 Word
+      Status3 { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DWord;   // Status3 Word
+      Status4 { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DWord;   // Status4 Word
+      Status5 { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DWord;   // Status5 Word
+      ErrorNum { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Int := -1;   // Error Number
+      MsgErr1 { CFC_Visible := 'false'} : Bool;   // 1=Messaging Error Occurs
+      MsgStat1 { CFC_Visible := 'false'} : Word;   // Message status
+      MsgAckn1 { CFC_Visible := 'false'} : Word;   // Message acknowledgement status
+      EnAcquireOut { CFC_Visible := 'false'} : Bool;   // Reserved
+      IsAcquired { CFC_Visible := 'false'} : Bool;   // Reserved
+      AfState { CFC_Visible := 'false'; CFC_EnumerationTexts := 'ES_AcquireStates'} : Byte;   // Reserved
+      AfReqPrev { CFC_Visible := 'false'} : Byte;   // Reserved
+      AfTimeStamp { CFC_Visible := 'false'} : DInt;   // Reserved
+      AfWaitTmAct { CFC_Visible := 'false'} : Real;   // Reserved
+      StUnified { CFC_Visible := 'false'; CFC_EnumerationTexts := 'APL_UnifiedSt'} : DWord;   // Reserved
+   END_VAR
+
+   VAR 
+      SbMsgEff1 : Byte;   // Effective message signal
+      SbMsgEff1_atBool { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT SbMsgEff1 : Array[0..7] of Bool;
+      SbMsgEff1Old : Byte;   // Effective message signal (Last cycle)
+      SnMsgToggle : Int;   // Reduce frequencey of call of ALARM_8P waiting for ACK
+      SxShowAlarm1 : Bool := TRUE;   // Call instance of ALARM_8P
+      SarBatchName : Array[1..32] of Byte := 32(BYTE#16#00);
+      Buffer : Array[0..71] of Byte;
+      Buffer_at { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT Buffer : Struct
+         Value { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  590
+         ST { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;   //  594
+         Spare { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;   //  595
+         Unit { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;   //  596
+         OpScale { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            High { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  598
+            Low { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  602
+         END_STRUCT;
+         MsgStatus { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   //  606
+         Mode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   //  610
+         AV_AH_Lim { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  612
+         AV_WH_Lim { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  616
+         AV_TH_Lim { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  620
+         AV_TL_Lim { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  624
+         AV_WL_Lim { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  628
+         AV_AL_Lim { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  632
+         AV_Hyst { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  636
+         SimAV { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   //  640
+         BatchID { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   //  644
+         anySarBatchName { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            S7 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;   //  648
+            DataType { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;   //  649
+            Repetition { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   //  650
+            DBNumber { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;   //  652
+            Address { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   //  654
+         END_STRUCT;
+         StepNo { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;   //  658
+      END_STRUCT;
+      Buffer_atBool { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT Buffer : Array[0..575] of Bool;
+      SnErr : Int;   // Error information.
+      SnRunUpCyc : Int;   // Counters of run-up-cycle.
+      SdwPrevBatchId : DWord;   // Saved BA_ID
+      SdwStepNoLoc : DWord;   // Variable for STEPNO
+      SdwBatchId : DWord;   // Variable for BATCHID
+      SrIdleTime : Real;   // Timer for IdleTime
+      SrOldIdleTime : Real;   // Previous value of IdleTime
+      SrWarnTime : Real;   // Counting warning Time
+      SrMonTime : Real;   // Previous value of MonTime.
+      srPulseTimeStart : Real;   // Counter for pulse width
+      srPulseTimeStop : Real;   // Counter for pulse width
+      SxFirstStart : Bool := TRUE;   // Initial run
+      SxCmdStart : Bool;   // Memorize command Start
+      SxPrevCmdStart : Bool;   // Previous value for Memorize command Start
+      SxStart : Bool;   // Previous value for Start.Value
+      SxFbkRun : Bool;   // Previous value for feedback FbkRun.Value
+      SxMonTiDynamicProcess : Bool;   // Variable for Time Monitoring in process.
+      SxMonTiStatic : Bool;   // Static monitoring error
+      SxResetNeededProtect : Bool;   // 1 = Reset is needed for protect signal
+      SxResetNeededTrip : Bool;   // 1 = Reset is needed for trip signal
+      SxResetNeededRapidStop : Bool;   // 1 = Reset is needed for rapid stop signal
+      SxResetNeededMonErr : Bool;   // 1 = Reset is needed for monitoring error
+      SxRstLi : Bool;   // Previous value of RstLi.
+      SxLocalLi : Bool;   // Previous value for LocalLi
+      SxStartAut : Bool;   // Previous value of StartAut.Value
+      SxStopAut : Bool;   // Previous value of StopAut.Value
+      SxOosLi : Bool;   // Rising edge of OosLi
+      SxLastMode : Bool;   // Last Mode before switched to Local Mode 0 = Manual, 1 = Auto
+      SxStartLocal : Bool;   // Previous value for StartLocal
+      SxStopLocal : Bool;   // Previous value for StopLocal
+      SxStopIdleAct : Bool;   // Motor Stopped and in Idle state
+      SxWaitToFbkStop : Bool;   // Wait to fbk stop for idletime
+      SxP_RstLocal : Bool;   // Reset in local
+      SxP_RstForce : Bool;   // Reset in forcing
+      SxP_RstAutMan : Bool;   // Reset in auto or manual mode
+      SxRstProtectDone : Bool;   // Reset Protection done with P_Rst
+      SxRstTripDone : Bool;   // Reset Trip done with P_Rst
+      SxResetNeededFaultExtCSF : Bool;   // 1 = Reset is needed for FaultExt or CSF
+      _reserve : Array[0..15] of Byte;   // 16 bytes reserve
+   END_VAR
+
+   VAR_TEMP 
+      stcTOP_SI : Struct
+         EV_CLASS : Byte;   //  Bits 0 to 3: Event ID·  Bits 4 to 7: Event class
+         EV_NUM : Byte;   //  Event number
+         PRIORITY : Byte;   //  Number of the priority class (meaning OF B#16#FE: OB NOT available or locked)
+         NUM : Byte;   //  OB number.
+         TYP2_3 : Byte;   //  Data ID 2_3: identifies the information entered in ZI2_3
+         TYP1 : Byte;   //  Data ID 1  : identifies the information entered in ZI1
+         ZI1 : Word;   //  Additional information 1
+         ZI2_3 : DWord;   //  Additional information 2_3
+      END_STRUCT;
+      stcSTART_UP_SI : Struct
+         EV_CLASS : Byte;   //  Bits 0 to 3: Event ID·  Bits 4 to 7: Event class
+         EV_NUM : Byte;   //  Event number
+         PRIORITY : Byte;   //  Number of the priority class (meaning OF B#16#FE: OB NOT available or locked)
+         NUM : Byte;   //  OB number.
+         TYP2_3 : Byte;   //  Data ID 2_3: identifies the information entered in ZI2_3
+         TYP1 : Byte;   //  Data ID 1  : identifies the information entered in ZI1
+         ZI1 : Word;   //  Additional information 1
+         ZI2_3 : DWord;   //  Additional information 2_3
+      END_STRUCT;
+      byTemp : Byte;   // Variable for temp byte.
+      stcInST : Struct   // Input 0..15 Signal Status
+         b0 : Byte;
+         b1 : Byte;
+         b2 : Byte;
+         b3 : Byte;
+         b4 : Byte;
+         b5 : Byte;
+         b6 : Byte;
+         b7 : Byte;
+         b8 : Byte;
+         b9 : Byte;
+         b10 : Byte;
+         b11 : Byte;
+         b12 : Byte;
+         b13 : Byte;
+         b14 : Byte;
+         b15 : Byte;
+      END_STRUCT;
+      xErrorNum : Int;   // Variable for classification ErrorNum
+      dwStatus1 : DWord;   // Variable for status1
+      dwStatus1_atBool AT dwStatus1 : Array[0..31] of Bool;
+      dwStatus2 : DWord;   // Variable for status2
+      dwStatus2_atBool AT dwStatus2 : Array[0..31] of Bool;
+      dwStatus3 : DWord;   // Variable for status3
+      dwStatus3_atBool AT dwStatus3 : Array[0..31] of Bool;
+      dwStatus4 : DWord;   // Variable for status4
+      dwStatus4_atBool AT dwStatus4 : Array[0..31] of Bool;
+      dwStatus4_atByte AT dwStatus4 : Array[0..3] of Byte;
+      dwStatus5 : DWord;   // Variable for status5
+      dwStatus5_atByte AT dwStatus5 : Array[0..3] of Byte;
+      iTemp : Int;   // Variable for temp INT - VV
+      AV_Mode : Struct
+         SimOn : Bool;
+         MS_Release : Bool;
+         MsgLock : Bool;
+         OosAct : Bool;
+         BatchEn : Bool;
+         Occupied : Bool;
+         Feat_SwiPoiDis : Bool;
+         Feat_SwiPoiFalseAct : Bool;
+         Feat_SwiPoiOOS : Bool;
+      END_STRUCT;
+      AV_Mode_at AT AV_Mode : Word;
+      EvtTs_Mode : Struct   // EventTs Mode bits
+         Connected : Bool;
+         MS_Release : Bool;
+         MsgLock : Bool;
+         OosAct : Bool;
+         BatchEn : Bool;
+         Occupied : Bool;
+         Bit6 : Bool;
+         Bit7 : Bool;
+         Bit8 : Bool;
+         Bit9 : Bool;
+         Bit10 : Bool;
+         Bit11 : Bool;
+         Bit12 : Bool;
+         Bit13 : Bool;
+         Bit14 : Bool;
+         Bit15 : Bool;
+      END_STRUCT;
+      EvtTs_Mode_at AT EvtTs_Mode : Word;
+      EvtTs2_Mode : Struct   // EventTs2 Mode bits
+         Connected : Bool;
+         MS_Release : Bool;
+         MsgLock : Bool;
+         OosAct : Bool;
+         BatchEn : Bool;
+         Occupied : Bool;
+         Bit6 : Bool;
+         Bit7 : Bool;
+         Bit8 : Bool;
+         Bit9 : Bool;
+         Bit10 : Bool;
+         Bit11 : Bool;
+         Bit12 : Bool;
+         Bit13 : Bool;
+         Bit14 : Bool;
+         Bit15 : Bool;
+      END_STRUCT;
+      EvtTs2_Mode_at AT EvtTs2_Mode : Word;
+      diOffset : DInt;
+      stcDigVal : Byte;
+      xOSPerAuto : Bool;   // 1 = Operator enabled to switch to automatic mode
+      xOSPerMan : Bool;   // 1 = Operator enabled to switch to manual mode
+      xOSPerLocal : Bool;   // 1 = Operator enabled to switch value to local mode
+      xOSPerOOS : Bool;   // 1 = Operator enabled to switch to OOS mode
+      xOSPerStart : Bool;   // 1 = Operator enable to open the valve
+      xOSPerStop : Bool;   // 1 = Operator enable to close the valve
+      xOSPerRst : Bool;   // 1 = Operator enabled to reset the valve
+      xOSPerDynMon : Bool;   // 1 = Operator enabled to configure the dynamic monitoring time
+      xOSPerStaMon : Bool;   // 1 = Operator enabled to configure the static monitoring time
+      xOSPerMonOnOff : Bool;   // 1 = Operator enabled to switch On/Off monitoring
+      xOSPerSim : Bool;   // 1 = Operator enabled to simulate the feedbacks
+      xOSPerSimAV : Bool;   // 1 = Operator can change the simulation value SimAV
+      xOSPerMSRel : Bool;   // 1 = Operator enabled to switch to MS_Release
+      xOSPerAVAHLim : Bool;   // 1 = Operator enabled to enter AV_AH_Lim
+      xOSPerAVWHLim : Bool;   // 1 = Operator enabled to enter AV_WH_Lim
+      xOSPerAVTHLim : Bool;   // 1 = Operator enabled to enter AV_TH_Lim
+      xOSPerHyst : Bool;   // 1 = Operator enabled to enter Hysterisys
+      xOSPerAVTLLim : Bool;   // 1 = Operator enabled to enter AV_TL_Lim
+      xOSPerAVWLLim : Bool;   // 1 = Operator enabled to enter AV_WL_Lim
+      xOSPerAVALLim : Bool;   // 1 = Operator enabled to enter AV_AL_Lim
+      xOSPerAVAHMsgEn : Bool;   // 1 = Operator enabled to activate/deactivate message over AV_AH_MsgEn
+      xOSPerAVWHMsgEn : Bool;   // 1 = Operator enabled to activate/deactivate message over AV_WH_MsgEn
+      xOSPerAVTHMsgEn : Bool;   // 1 = Operator enabled to activate/deactivate message over AV_TH_MsgEn
+      xOSPerAVTLMsgEn : Bool;   // 1 = Operator enabled to activate/deactivate message over AV_TL_MsgEn
+      xOSPerAVWLMsgEn : Bool;   // 1 = Operator enabled to activate/deactivate message over AV_WL_MsgEn
+      xOSPerAVALMsgEn : Bool;   // 1 = Operator enabled to activate/deactivate message over AV_AL_MsgEn
+      xFeatStartupWithOutInit : Bool;   // Bit 0 = 0 Start up with defined init in OB100 (default)  -> Start the motor in
+      xFeatOosLiEn : Bool;   // Bit 1 = 0, OosLiEn: OosLi cann´t switch to Out of Service
+      xFeatResetAutModLi : Bool;   // Bit 2 = 0, All linkable command modes will not be reset after evaluation
+      xFeatResetAutInLi : Bool;   // Bit 3 = 0, All linkable command inputs will not be reset after evaluation xRese
+      xFeatSwitchMode : Bool;   // Bit 4 = 0, All positions need a command
+      xFeatAutoReset : Bool;   // Bit 9 = 0, (Default) In Auto mode on receiving Protect, requires a reset from t
+      xFeatLastActMod : Bool;   // Bit 10 = 0, Switch to the Man mode when switched from Local mode through Link.
+      xFeatTrackFbkSig : Bool;   // Bit 11 = 1  Tracking feedback signals in simulation mode after monitoring time
+      xFeatSepMonStop : Bool;   // Bit 13 = 1 = Separate monitoring time for motor stopping
+      xFeatEnRapidStp : Bool;   // Bit 14 = 0, (default) Disable Rapid Stop
+      xFeatBumplessMode : Bool;   // Bit 17 = 0, (default)Bumpless behavior disabled.
+      xFeatCSFwithError : Bool;
+      xFeatRstProtectTrip : Bool;   // Bit 19 = 0, (default)Resettable even if Protection or Motor Protection is not a
+      xFeatNoImpInLocal24 : Bool;   // Bit 20 = 1,  Disable calculaion of impulse controls in local settings 2 & 4
+      xFeatBmpModeOnlyOp : Bool;   // Bit 21 = 1, Enabling bumpless changeover to automatic mode only for operator
+      xFeatEnMsgAck : Bool;   // Bit 22 = 0, (default) Enable Message acknowledgement disabled
+      xFeat_SwiPoiDis : Bool;   // Bit 28 = 0, (default) Enable switching points if MsgLock =1
+      xFeat_SwiPoiFalseAct : Bool;   // Bit 29 = 0, (default) Signal Value =1 (1 active) if limit is violated
+      xFeat_ResetDpdsOnMode : Bool;   // Bit 30 = 0, (default) No Resetting interlock via input signal in automatic via
+      xFeat_ResetinManual : Bool;   // Bit 31 = 0, (default) No Resetting interlock in manual mode
+      xFeatLocalAuth : Bool;   // Bit 24 = 1, Function local authorization active
+      xFeatMsgLockAll : Bool;   // Bit 25 = 1, 1 = Suppress all messages if MsgLock = 1
+      xFeatSwiPoiOOS : Bool;   // Bit 26 = 1, 1 = Reset switching points if switching to Out of Service
+      xFeatIntLckMon : Bool;   // Bit 27 = 1 = Interlock monitoring in faceplate standard view if LocalSetting =
+      xFeatBypass : Bool;   // Feature2.Bit 2, 1 = Separate evaluation OF bypassed AND simulated interlock sig
+      xFeatControlPriority : Bool;   // Feature2.Bit 3, 1 = In case of invalid input command the control changes to res
+      xFeatLocSwitchMode : Bool;   // 0 = Button mode; 1 = Switch mode; for local mode
+      xFeatIgnrBadIntlkState : Bool;   // Feature2.Bit 5, 1 = Ignore bad signal state in interlock signals
+      xFeatForceLocal : Bool;   // Feature2.Bit 8, 1 = Forcing in local mode
+      xFeatBadAutST : Bool;   // Feature2.Bit 10, 1 = Block goes to rest position if one of ...
+      xOutStatusWord1x15 : Bool;   // Temporary variable for StatusWord1 Bit 21 (Mode switch fail)
+      xManAct : Bool;   // Variable for Manual mode.
+      xAutoAct : Bool;   // Variable FOR AUTO/MAN mode.
+      xBumpLessTransfer : Bool;   // Variable to check whether Bumpless is enabled
+      xMonErr : Bool;   // Any monitoring error
+      xMonSafePosErr : Bool;   // Any monitoring error and MonSafePos activated -> force valve to safe position
+      xInvalidCommand : Bool;   // Variable for Invalid command
+      xInvalidMode : Bool;   // Variable for Invalid mode
+      xInterlocked : Bool;   // Variable to check if valve is interlocked
+      xResetEnabled : Bool;   // 1 = Reset is possible
+      xOpResetRequest : Bool;   // 1 = Reset via faceplate depends on mode and featurebits
+      xLiResetRequest : Bool;   // 1 = Reset via input signals depends on mode and featurebits
+      xP_RstLocal : Bool;   // 1 = Local reset
+      xP_RstForce : Bool;   // 1 = Force reset
+      xP_RstAutMan : Bool;   // 1 = Automatic manual reset
+      xPermit_N : Bool;   // 1 = Not allowed to activate the valve
+      xIntlock_N : Bool;   // 1 = Valve is interlocked
+      xProtect_N : Bool;   // 1 = Valve is interlocked
+      xTrip_N : Bool;   // effective value of Trip
+      xFaultExtCSF : Bool;   // External Fault FautExt or CSF
+      xPerm_En : Bool;   // Permit enabled
+      xIntl_En : Bool;   // Intlock enabled
+      xProt_En : Bool;   // Protect enabled
+      xForceInputActive : Bool;   // Forcing is active
+      xFbkOK : Bool;   // feedback conditions are ok
+      xError : Bool;   // help variable Error
+      xSimOnFbkDelay : Bool;   // feedback simulation with monitoring time delay
+      xSimAct : Bool;   // simulation active
+      xBadAutST : Bool;   // one of the automatic commands is bad
+      xOB_Cycle : Bool;   // block is running in a cyclic interrupt OB
+      xOB_Start : Bool;   // block is running in start OB
+   END_VAR
+
+
+BEGIN
+	
+	#xFeatStartupWithOutInit := #Feature.Bit0;
+	#xFeatOosLiEn := #Feature.Bit1;
+	#xFeatResetAutModLi := #Feature.Bit2;
+	#xFeatResetAutInLi := #Feature.Bit3;
+	#xFeatSwitchMode := #Feature.Bit4;
+	#xFeatAutoReset := #Feature.Bit9;
+	#xFeatLastActMod := #Feature.Bit10;
+	#xFeatTrackFbkSig := #Feature.Bit11;
+	#xFeatSepMonStop := #Feature.Bit13;
+	#xFeatEnRapidStp := #Feature.Bit14;
+	#xFeatBumplessMode := #Feature.Bit17;
+	#xFeatCSFwithError := #Feature.Bit18;
+	#xFeatRstProtectTrip := #Feature.Bit19;
+	#xFeatNoImpInLocal24 := #Feature.Bit20;
+	#xFeatBmpModeOnlyOp := #Feature.Bit21;
+	#xFeatEnMsgAck := #Feature.Bit22;
+	#xFeatLocalAuth := #Feature.Bit24;
+	#xFeatMsgLockAll := #Feature.Bit25;
+	#xFeatSwiPoiOOS := #Feature.Bit26;
+	#xFeatIntLckMon := #Feature.Bit27;
+	#xFeat_SwiPoiDis := #Feature.Bit28;
+	#xFeat_SwiPoiFalseAct := #Feature.Bit29;
+	#xFeat_ResetDpdsOnMode := #Feature.Bit30;
+	#xFeat_ResetinManual := #Feature.Bit31;
+	#xFeatBypass := #Feature2.Bit2;
+	#xFeatControlPriority := #Feature2.Bit3;
+	#xFeatLocSwitchMode := #Feature2.Bit4;
+	#xFeatIgnrBadIntlkState := #Feature2.Bit5;
+	#xFeatForceLocal := #Feature2.Bit8;
+	#xFeatBadAutST := #Feature2.Bit10;
+	
+	#xOSPerAuto := #OS_Perm.Bit0;
+	#xOSPerMan := #OS_Perm.Bit1;
+	#xOSPerLocal := #OS_Perm.Bit2;
+	#xOSPerOOS := #OS_Perm.Bit3 AND "PL_DigValue"(#ManAct) AND NOT "PL_DigValue"(#ModLiOp);
+	#xOSPerStop := #OS_Perm.Bit4;
+	#xOSPerStart := #OS_Perm.Bit5;
+	#xOSPerRst := #OS_Perm.Bit7;
+	#xOSPerDynMon := #OS_Perm.Bit8;
+	#xOSPerStaMon := #OS_Perm.Bit9;
+	#xOSPerMonOnOff := #OS_Perm.Bit10;
+	#xOSPerSim := #OS_Perm.Bit11;
+	#xOSPerMSRel := #OS_Perm.Bit12;
+	#xOSPerAVAHLim := #OS_Perm.Bit13;
+	#xOSPerAVWHLim := #OS_Perm.Bit14;
+	#xOSPerAVTHLim := #OS_Perm.Bit15;
+	#xOSPerHyst := #OS_Perm.Bit16;
+	#xOSPerAVALLim := #OS_Perm.Bit17;
+	#xOSPerAVWLLim := #OS_Perm.Bit18;
+	#xOSPerAVTLLim := #OS_Perm.Bit19;
+	#xOSPerAVAHMsgEn := #OS_Perm.Bit20;
+	#xOSPerAVWHMsgEn := #OS_Perm.Bit21;
+	#xOSPerAVTHMsgEn := #OS_Perm.Bit22;
+	#xOSPerAVTLMsgEn := #OS_Perm.Bit23;
+	#xOSPerAVWLMsgEn := #OS_Perm.Bit24;
+	#xOSPerAVALMsgEn := #OS_Perm.Bit25;
+	#xOSPerSimAV := #OS_Perm.Bit26;
+	#xBadAutST := ("PL_DigQC"(#StartAut) = "PL".QC.badDev OR "PL_DigQC"(#StartAut) = "PL".QC.badProc
+	OR "PL_DigQC"(#StopAut) = "PL".QC.badDev OR "PL_DigQC"(#StopAut) = "PL".QC.badProc)
+	AND #xFeatBadAutST;
+	
+	#xSimAct := (NOT "PL_DigValue"(#SimLiOp) AND #SimOn) OR ("PL_DigValue"(#SimOnLi) AND "PL_DigValue"(#SimLiOp));
+	#dwStatus1 := #Status1;
+	#dwStatus2 := #Status2;
+	#dwStatus3 := #Status3;
+	#dwStatus4 := #Status4;
+	#dwStatus5 := #Status5;
+	#stcDigVal := 16#0A;
+	
+	#xOutStatusWord1x15 := false;
+	#xInvalidCommand := false;
+	#xInvalidMode := false;
+	#xMonSafePosErr := false;
+	#xResetEnabled := false;
+	
+	#xFbkOK := ("PL_DigValue"(#Start) AND "PL_DigValue"(#FbkRunOut)) OR (NOT "PL_DigValue"(#Start) AND NOT "PL_DigValue"(#FbkRunOut));
+	#P_Rst.%X7 := false;
+	#xForceInputActive := ("PL_DigValue"(#StartForce) OR "PL_DigValue"(#StopForce))
+	AND (("PL_DigValue"(#LocalAct) AND #xFeatForceLocal
+	AND (#LocalSetting = 1 OR #LocalSetting = 3)) OR NOT "PL_DigValue"(#LocalAct));
+	
+	#xPerm_En := NOT ("PL_DigQC"(#Permit) = "PL".QC.notconn) AND #Perm_En;
+	#xIntl_En := NOT ("PL_DigQC"(#Intlock) = "PL".QC.notconn) AND #Intl_En;
+	#xProt_En := NOT ("PL_DigQC"(#Protect) = "PL".QC.notconn) AND #Prot_En;
+	
+	IF #xFeatIgnrBadIntlkState THEN
+	    #xPermit_N := NOT "PL_DigValue"(#Permit) AND #xPerm_En;
+	    #xIntlock_N := NOT "PL_DigValue"(#Intlock) AND #xIntl_En;
+	    #xProtect_N := NOT "PL_DigValue"(#Protect) AND #xProt_En;
+	ELSE    // A7d0
+	    #xPermit_N := (NOT "PL_DigValue"(#Permit) OR ("PL_DigQC"(#Permit) = "PL".QC.badDev) OR ("PL_DigQC"(#Permit) = "PL".QC.badProc)) AND #xPerm_En;
+	    #xIntlock_N := (NOT "PL_DigValue"(#Intlock) OR ("PL_DigQC"(#Intlock) = "PL".QC.badDev) OR ("PL_DigQC"(#Intlock)  = "PL".QC.badProc)) AND #xIntl_En;
+	    #xProtect_N := (NOT "PL_DigValue"(#Protect) OR ("PL_DigQC"(#Protect) = "PL".QC.badDev) OR ("PL_DigQC"(#Protect) = "PL".QC.badProc)) AND #xProt_En;
+	END_IF;
+	// A7d1
+	IF ("PL_DigQC"(#Permit) = "PL".QC.notconn) OR NOT #xFeatBypass THEN
+	    #Permit.%X6 := false;
+	END_IF;
+	// A7d2
+	IF ("PL_DigQC"(#Intlock) = "PL".QC.notconn) OR NOT #xFeatBypass THEN
+	    #Intlock.%X6 := false;
+	END_IF;
+	// A7d3
+	IF ("PL_DigQC"(#Protect) = "PL".QC.notconn) OR NOT #xFeatBypass THEN
+	    #Protect.%X6 := false;
+	END_IF;
+	// A7d4
+	
+	#xTrip_N := NOT "PL_DigValue"(#Trip) OR ("PL_DigQC"(#Trip) = "PL".QC.badDev) OR ("PL_DigQC"(#Trip) = "PL".QC.badProc);
+	#xFaultExtCSF := (#xFeatCSFwithError AND "PL_DigValue"(#CSF)) OR "PL_DigValue"(#FaultExt);
+	IF #SxFirstStart THEN
+	    #xTrip_N := false;
+	    #xProtect_N := false;
+	END_IF;
+	// A7d5
+	#xMonErr := "PL_DigValue"(#MonDynErr) OR "PL_DigValue"(#MonDynStopErr) OR "PL_DigValue"(#MonStaErr);
+	
+	#SnErr := RD_SINFO(TOP_SI => #stcTOP_SI, START_UP_SI => #stcSTART_UP_SI);
+	#xOB_Cycle := CHAR_TO_INT(BYTE_TO_CHAR(#stcTOP_SI.NUM)) >= 30 AND CHAR_TO_INT(BYTE_TO_CHAR(#stcTOP_SI.NUM)) <= 38;
+	#xOB_Start := CHAR_TO_INT(BYTE_TO_CHAR(#stcTOP_SI.NUM)) = 100;
+	
+	
+	#MS_Release.%X7 := ("PL_DigValue"(#ManAct) OR "PL_DigValue"(#OosAct)) AND #MS_RelOp;
+	IF NOT ("PL_DigValue"(#ManAct) OR "PL_DigValue"(#OosAct)) THEN
+	    #MS_RelOp := false;
+	END_IF;
+	// A7da
+	IF #xFeatLocalAuth THEN
+	    #OpSt_Out := #OpSt_In OR 16#80000000;
+	ELSE    // A7db
+	    #OpSt_Out := #OpSt_In AND 16#7FFFFFFF;
+	END_IF;
+	// A7dc
+	IF "PL_DigValue"(#OosAct) OR "PL_DigValue"(#ManAct) THEN
+	    IF #ManModOp THEN
+	        #ManAct.%X7 := true;
+	        #OosAct.%X7 := false;
+	    ELSIF ("PL_DigValue"(#OosLi) AND #xFeatOosLiEn AND NOT #SxOosLi) OR #OosOp THEN   // A7de
+	        #ManAct.%X7 := false;
+	        #OosAct.%X7 := true;
+	    END_IF;
+	    // A7e0
+	    #SxOosLi := "PL_DigValue"(#OosLi);
+	END_IF;
+	// A7dd
+	IF "PL_DigValue"(#OosAct) THEN
+	    #RdyToStart := #stcDigVal;
+	    IF "PL_DigValue"(#Start) THEN
+	        IF #PulseWidth < #SampleTime THEN
+	            #PulseWidth := #SampleTime;
+	        END_IF;
+	        // A7e3
+	        #srPulseTimeStart := #PulseWidth;
+	        #srPulseTimeStop := #PulseWidth;
+	    END_IF;
+	    // A7e2
+	    #Start.%X7 := false;
+	    #SxCmdStart := false;
+	    IF #xOB_Cycle OR #xOB_Start THEN
+	        IF #srPulseTimeStop >= 0.0 THEN
+	            #srPulseTimeStop := #srPulseTimeStop - #SampleTime;
+	        END_IF;
+	        // A7e5
+	        #P_Stop.%X7 := NOT (#srPulseTimeStop >= 0.0);
+	    END_IF;
+	    // A7e4
+	    #P_Start.%X7 := false;
+	    #WarnAct.%X7 := false;
+	    #SrWarnTime := #WarnTiMan;
+	    #FbkRunOut := "PL_DigAddQC"(Value := false, QC := "PL".QC.good);
+	    #Stop := "PL_DigAddQC"(Value := true, QC := "PL".QC.good);;
+	    #Run := "PL_DigAddQC"(Value := false, QC := "PL".QC.good);
+	    #SxStopIdleAct := false;
+	    #SrIdleTime := 0.0;
+	    #SrOldIdleTime := #IdleTime;
+	    #ErrorNum := 0;
+	    #AutoST := 16#80;
+	    #ST_Worst := 16#80;
+	END_IF;
+	// A7e1
+	
+	IF #SxFirstStart OR #xOB_Start THEN
+	    #SxFirstStart := false;
+	    #SxShowAlarm1 := true;
+	    IF #xOB_Start THEN
+	        #SnRunUpCyc := #RunUpCyc;
+	    END_IF;
+	    // A7e7
+	    IF #PulseWidth < #SampleTime THEN
+	        #PulseWidth := #SampleTime;
+	    END_IF;
+	    // A7e8
+	    #srPulseTimeStart := #PulseWidth;
+	    #srPulseTimeStop := #PulseWidth;
+	    IF NOT (#xFeatStartupWithOutInit OR "PL_DigValue"(#OosAct)) THEN
+	        #GrpErr := #stcDigVal;
+	        #RdyToStart := #stcDigVal;
+	        IF "PL_DigValue"(#Start) THEN
+	            #srPulseTimeStop := 0.0;
+	        END_IF;
+	        // A7ea
+	        #Start.%X7 := false;
+	        #SxCmdStart := false;
+	        IF #srPulseTimeStop >= 0.0 THEN
+	            #srPulseTimeStop := #srPulseTimeStop - #SampleTime;
+	        END_IF;
+	        // A7eb
+	        #P_Start.%X7 := false;
+	        #P_Stop.%X7 := NOT (#srPulseTimeStop >= 0.0);
+	        #ManAct.%X7 := true;
+	        #AutAct.%X7 := false;
+	        #LocalAct.%X7 := false;
+	        #OosAct.%X7 := false;
+	        #MonDynErr.%X7 := false;
+	        #MonDynStopErr.%X7 := false;
+	        #MonStaErr.%X7 := false;
+	        #SxMonTiDynamicProcess := false;
+	        #SxMonTiStatic := false;
+	        #xMonErr := false;
+	        #SrMonTime := #MonTiDynamic;
+	        IF #xFeatSepMonStop AND "PL_DigValue"(#FbkRunOut) THEN
+	            #SrMonTime := #MonTiDyStop;
+	        END_IF;
+	        // A7ec
+	        #SxResetNeededMonErr := false;
+	        #SxResetNeededProtect := false;
+	        #SxResetNeededFaultExtCSF := false;
+	        #SxResetNeededTrip := false;
+	        #WarnAct := #stcDigVal;
+	        #SrWarnTime := #WarnTiMan;
+	        #SrIdleTime := #IdleTime;
+	        #SrOldIdleTime := #IdleTime;
+	        #SxStopIdleAct := false;
+	        #SxWaitToFbkStop := false;
+	    END_IF;
+	    // A7e9
+	    IF "PL_DigValue"(#AutAct) THEN
+	        #xOSPerAuto := false;
+	    END_IF;
+	    // A7ed
+	    IF "PL_DigValue"(#ManAct) THEN
+	        #xOSPerMan := false;
+	    END_IF;
+	    // A7ee
+	    #SxP_RstLocal := false;
+	    #SxP_RstForce := false;
+	    #SxP_RstAutMan := false;
+	    #SxRstProtectDone := false;
+	    #SxRstTripDone := false;
+	    #ErrorNum := 0;
+	END_IF;
+	// A7e6
+	
+	IF NOT "PL_DigValue"(#OosAct) AND #xOB_Cycle THEN
+	    #xBumpLessTransfer := false;
+	    #xErrorNum := 0;
+	    #xAutoAct := "PL_DigValue"(#AutAct);
+	    #xManAct := "PL_DigValue"(#ManAct);
+	    IF NOT #xFeatEnRapidStp THEN
+	        #RapidStp := false;
+	    END_IF;
+	    
+	    IF #LocalSetting < 0 OR #LocalSetting > 4 THEN
+	        #xErrorNum := 41;
+	    ELSIF (#LocalSetting = 0 OR #LocalSetting = 3 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalLi) THEN   // A7f1
+	        #xErrorNum := 42;
+	    END_IF;
+	    // A7f3
+	    IF "PL_DigValue"(#AutAct) OR "PL_DigValue"(#ModLiOp) OR ((#LocalSetting = 1 OR #LocalSetting = 2) AND "PL_DigValue"(#LocalLi)) THEN
+	        #xOSPerAuto := false;
+	    END_IF;
+	    // A7f4
+	    IF "PL_DigValue"(#ManAct) OR "PL_DigValue"(#ModLiOp) OR ((#LocalSetting = 1 OR #LocalSetting = 2) AND "PL_DigValue"(#LocalLi)) THEN
+	        #xOSPerMan := false;
+	    END_IF;
+	    // A7f5
+	    IF "PL_DigValue"(#LocalAct) OR "PL_DigValue"(#ModLiOp) OR (#LocalSetting <> 3 AND #LocalSetting <> 4) THEN
+	        #xOSPerLocal := false;
+	    END_IF;
+	    // A7f6
+	    
+	    #xInterlocked := (#xIntlock_N OR #xProtect_N OR #SxResetNeededProtect
+	    OR ((NOT "PL_DigValue"(#Start) AND #xPermit_N) AND (NOT "PL_DigValue"(#FbkRun) OR #xMonErr)))
+	    AND NOT (("PL_DigValue"(#LocalAct) OR #xSimAct) AND #BypProt);
+	    
+	    IF NOT #SxCmdStart OR "PL_DigValue"(#AutAct) OR "PL_DigValue"(#LocalAct) OR #xInterlocked OR #xTrip_N OR #xFaultExtCSF OR #SxResetNeededMonErr OR #SxResetNeededTrip OR #SxResetNeededFaultExtCSF THEN
+	        #xOSPerStop := false;
+	    END_IF;
+	    // A7f7
+	    
+	    IF #SxCmdStart OR "PL_DigValue"(#AutAct) OR "PL_DigValue"(#LocalAct) OR #xInterlocked OR #xTrip_N OR #xFaultExtCSF OR #SxStopIdleAct OR #SxWaitToFbkStop
+	        OR "PL_DigValue"(#R_StpAct) OR #SxResetNeededMonErr OR #xMonErr OR #SxResetNeededTrip OR #SxResetNeededFaultExtCSF THEN
+	        #xOSPerStart := false;
+	    END_IF;
+	    // A7f8
+	    
+	    IF (((#LocalSetting = 3 OR #LocalSetting = 4) AND #LocalOp) AND NOT "PL_DigValue"(#ModLiOp)) OR ((#LocalSetting = 1 OR #LocalSetting = 2) AND "PL_DigValue"(#LocalLi)) THEN
+	        #LocalAct.%X7 := true;
+	        #xOSPerStart := false;
+	        #xOSPerStop := false;
+	        #xManAct := false;
+	        #xAutoAct := false;
+	    ELSIF ("PL_DigValue"(#ModLiOp) AND "PL_DigValue"(#AutModLi) AND (NOT #xFeatSwitchMode AND "PL_DigValue"(#ManModLi))) AND NOT "PL_DigValue"(#LocalAct) THEN    // A7f9
+	        #xInvalidMode := true;
+	        #xErrorNum := 51;
+	    ELSIF NOT (("PL_DigValue"(#LocalAct) AND "PL_DigValue"(#ModLiOp)) AND (#LocalSetting = 3 OR #LocalSetting = 4)) THEN    // A7fb
+	        IF ("PL_DigValue"(#ModLiOp) AND "PL_DigValue"(#AutModLi)) OR (NOT "PL_DigValue"(#ModLiOp) AND #AutModOp) THEN
+	            #xAutoAct := true;
+	            #xManAct := false;
+	            #SxLastMode := true;
+	        END_IF;
+	        // A7fd
+	        IF (((NOT #xFeatSwitchMode AND "PL_DigValue"(#ManModLi)) OR (NOT "PL_DigValue"(#AutModLi) AND #xFeatSwitchMode)) AND "PL_DigValue"(#ModLiOp)) OR (NOT "PL_DigValue"(#ModLiOp) AND #ManModOp) THEN
+	            #xManAct := true;
+	            #xAutoAct := false;
+	            #SxLastMode := false;
+	        END_IF;
+	    END_IF;
+	    // A7fc
+	    
+	    IF ((NOT "PL_DigValue"(#ModLiOp) AND #xFeatBmpModeOnlyOp) OR NOT #xFeatBmpModeOnlyOp) AND #xFeatBumplessMode THEN
+	        #xBumpLessTransfer := NOT ((("PL_DigValue"(#StartAut) = "PL_DigValue"(#Start)) AND #xFeatSwitchMode)
+	        OR (NOT #xFeatSwitchMode AND ((NOT "PL_DigValue"(#Start)) = "PL_DigValue"(#StopAut)) AND ("PL_DigValue"(#Start) = "PL_DigValue"(#StartAut)))
+	        OR (NOT #xFeatSwitchMode AND NOT "PL_DigValue"(#StopAut) AND NOT "PL_DigValue"(#StartAut))
+	        OR (NOT #xFeatSwitchMode AND "PL_DigValue"(#StopAut) AND "PL_DigValue"(#StartAut)));
+	    ELSE    // A7ff
+	        #xBumpLessTransfer := false;
+	    END_IF;
+	    // A800
+	    IF NOT "PL_DigValue"(#AutAct) AND #xAutoAct THEN
+	        #xOutStatusWord1x15 := #xBumpLessTransfer;
+	        IF #xOutStatusWord1x15 THEN
+	            IF NOT "PL_DigValue"(#LocalAct) THEN
+	                #xAutoAct := false;
+	                #xManAct := true;
+	                #SxLastMode := false;
+	                IF NOT "PL_DigValue"(#ModLiOp) THEN
+	                    #xOSPerAuto := #OS_Perm.Bit0;
+	                    #xOSPerMan := false;
+	                END_IF;
+	            ELSE    // A803
+	                #xAutoAct := false;
+	                IF NOT "PL_DigValue"(#ModLiOp) THEN
+	                    #xOSPerAuto := #OS_Perm.Bit0;
+	                    #xOSPerMan := #OS_Perm.Bit1;
+	                    #xOSPerLocal := false;
+	                END_IF;
+	            END_IF;
+	        END_IF;
+	    END_IF;
+	    // A801
+	    
+	    IF ((NOT "PL_DigValue"(#LocalLi) AND (#LocalSetting = 1 OR #LocalSetting = 2))
+	        OR ((#xAutoAct OR #xManAct) AND (#LocalSetting = 3 OR #LocalSetting = 4))
+	        OR (#LocalSetting = 0)) AND "PL_DigValue"(#LocalAct) THEN
+	        #LocalAct.%X7 := false;
+	        IF NOT #xAutoAct AND NOT #xManAct THEN
+	            IF NOT #xBumpLessTransfer AND #xFeatLastActMod THEN
+	                #xAutoAct := #SxLastMode;
+	                #xManAct := NOT #xAutoAct;
+	            ELSE    // A809
+	                #xManAct := true;
+	                #xAutoAct := false;
+	                #SxLastMode := false;
+	            END_IF;
+	        END_IF;
+	    END_IF;
+	    // A807
+	    #AutAct.%X7 := #xAutoAct;
+	    #ManAct.%X7 := #xManAct;
+	    IF NOT ((#xSimAct OR "PL_DigValue"(#LocalAct)) AND #BypProt) AND #xProtect_N AND NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct)) THEN
+	        #SxResetNeededProtect := true;
+	    ELSIF ((NOT #Prot_En OR ((#xSimAct OR "PL_DigValue"(#LocalAct)) AND #BypProt))      // A80b
+	        OR ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct))) AND #SxResetNeededProtect THEN
+	        #SxResetNeededProtect := false;
+	        #P_Rst.%X7 := true;
+	    END_IF;
+	    // A80d
+	    
+	    IF NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct)) AND #xTrip_N THEN
+	        #SxResetNeededTrip := true;
+	    ELSIF #SxResetNeededTrip AND "PL_DigValue"(#LocalAct) AND (#LocalSetting = 2 OR #LocalSetting = 4) THEN    // A80e
+	        #SxResetNeededTrip := false;
+	        #P_Rst.%X7 := true;
+	    END_IF;
+	    // A810
+	    
+	    IF NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct)) AND #xFaultExtCSF THEN
+	        #SxResetNeededFaultExtCSF := true;
+	    ELSIF #SxResetNeededFaultExtCSF AND "PL_DigValue"(#LocalAct) AND (#LocalSetting = 2 OR #LocalSetting = 4) THEN    // A811
+	        #SxResetNeededFaultExtCSF := false;
+	        #P_Rst.%X7 := true;
+	    END_IF;
+	    // A813
+	    
+	    IF (#SxRstProtectDone OR #SxRstTripDone) AND #xFeatRstProtectTrip THEN
+	        IF NOT #xProtect_N AND #SxRstProtectDone THEN
+	            #SxResetNeededProtect := false;
+	        END_IF;
+	        // A815
+	        IF NOT #xTrip_N AND #SxRstTripDone THEN
+	            #SxResetNeededTrip := false;
+	        END_IF;
+	    END_IF;
+	    // A814
+	    
+	    IF NOT #xProtect_N THEN
+	        #SxRstProtectDone := false;
+	    END_IF;
+	    // A817
+	    IF NOT #xTrip_N THEN
+	        #SxRstTripDone := false;
+	    END_IF;
+	    // A818
+	    IF "PL_DigValue"(#R_StpAct) THEN
+	        #SxResetNeededRapidStop := true;
+	    END_IF;
+	    // A819
+	    IF ("PL_DigValue"(#MonDynErr) OR "PL_DigValue"(#MonDynStopErr) OR "PL_DigValue"(#MonStaErr)) AND #Monitor AND NOT #xForceInputActive AND
+	        NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct)) THEN
+	        #SxResetNeededMonErr := true;
+	    ELSIF (NOT #Monitor OR #xForceInputActive OR ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct))) AND #SxResetNeededMonErr THEN    // A81a
+	        #SxResetNeededMonErr := false;
+	    END_IF;
+	    // A81c
+	    #xFbkOK := ("PL_DigValue"(#Start) AND "PL_DigValue"(#FbkRunOut)) OR (NOT "PL_DigValue"(#Start) AND NOT "PL_DigValue"(#FbkRunOut));
+	    #xOpResetRequest := (NOT #xFeat_ResetDpdsOnMode AND "PL_DigValue"(#AutAct)) OR ("PL_DigValue"(#ManAct) AND #xFeat_ResetinManual);
+	    #xLiResetRequest := ("PL_DigValue"(#ManAct) AND #xFeat_ResetinManual AND NOT #xFeat_ResetDpdsOnMode) OR "PL_DigValue"(#AutAct);
+	    #xResetEnabled := (((#SxResetNeededProtect OR #SxResetNeededMonErr OR #SxResetNeededTrip OR #SxResetNeededFaultExtCSF)
+	    AND (#xOpResetRequest OR #xLiResetRequest OR "PL_DigValue"(#LocalAct))) OR #SxResetNeededRapidStop)
+	    AND (NOT #xProtect_N OR #xFeatRstProtectTrip)
+	    AND (NOT #xTrip_N OR #xFeatRstProtectTrip) AND #xFbkOK AND NOT #xFaultExtCSF;
+	    IF ((NOT #SxRstLi AND "PL_DigValue"(#RstLi)) OR #RstOp) AND "PL_DigValue"(#R_StpAct) AND NOT "PL_DigValue"(#FbkRunOut) THEN
+	        IF NOT ((#LocalSetting = 1 OR #LocalSetting = 3) AND "PL_DigValue"(#LocalAct)) THEN
+	            #SxResetNeededMonErr := false;
+	        END_IF;    // A81e
+	        #SxResetNeededRapidStop := false;
+	        #R_StpAct.%X7 := false;
+	        #P_Rst.%X7 := true;
+	    END_IF;
+	    // A81d
+	    
+	    #xP_RstLocal := false;
+	    #xP_RstForce := false;
+	    #xP_RstAutMan := false;
+	    IF NOT #xForceInputActive AND "PL_DigValue"(#LocalAct) THEN
+	        IF #LocalSetting = 1 OR #LocalSetting = 3 THEN
+	            IF "PL_DigValue"(#StopLocal) AND #xFbkOK AND NOT #xInvalidCommand THEN
+	                #xP_RstLocal := #xResetEnabled;
+	                #SxResetNeededMonErr := false;
+	                #SxResetNeededProtect := false;
+	                #SxResetNeededFaultExtCSF := #xFaultExtCSF;
+	            END_IF;
+	            // A821
+	            IF NOT #SxStopLocal AND "PL_DigValue"(#StopLocal) AND #xFbkOK AND NOT #xInvalidCommand THEN
+	                #xP_RstLocal := #xResetEnabled;
+	                #SxResetNeededTrip := #xTrip_N;
+	            END_IF;
+	            // A822
+	        END_IF;
+	    ELSIF NOT "PL_DigValue"(#R_StpAct) AND #xForceInputActive THEN  // A81f
+	        #xP_RstForce := #xResetEnabled;
+	        #xResetEnabled := false;
+	        #SxResetNeededMonErr := false;
+	        #SxResetNeededProtect := false;
+	        #SxResetNeededTrip := false;
+	        #SxResetNeededFaultExtCSF := false;
+	    ELSIF ((#RstOp AND #xOpResetRequest) OR (NOT #SxRstLi AND "PL_DigValue"(#RstLi) AND #xLiResetRequest)) AND #xResetEnabled THEN  // A824
+	        #P_Rst.%X7 := true;
+	        #xResetEnabled := false;
+	        #SxResetNeededMonErr := false;
+	        #SxResetNeededProtect := false;
+	        #SxResetNeededTrip := false;
+	        #SxResetNeededFaultExtCSF := false;
+	    ELSIF NOT #xOpResetRequest AND NOT #xLiResetRequest THEN  // A825
+	        #xP_RstAutMan := true;
+	        #xResetEnabled := false;
+	        #SxResetNeededMonErr := false;
+	        #SxResetNeededProtect := false;
+	        #SxResetNeededTrip := false;
+	        #SxResetNeededFaultExtCSF := false;
+	    END_IF;
+	    // A826
+	    IF ((NOT #SxP_RstLocal AND #xP_RstLocal) OR (NOT #SxP_RstForce AND #xP_RstForce)) OR (NOT #SxP_RstAutMan AND #xP_RstAutMan) THEN
+	        "PL_DigSetValTrue"(#P_Rst);
+	    END_IF;
+	    // A827
+	    IF "PL_DigValue"(#P_Rst) AND #xFeatRstProtectTrip THEN
+	        IF #xProtect_N THEN
+	            #SxRstProtectDone := true;
+	        END_IF;
+	        // A829
+	        IF #xTrip_N THEN
+	            #SxRstTripDone := true;
+	        END_IF;
+	    END_IF;
+	    // A828
+	    
+	    #SxP_RstLocal := #xP_RstLocal;
+	    #SxP_RstForce := #xP_RstForce;
+	    #SxP_RstAutMan := #xP_RstAutMan;
+	    IF #xFeatAutoReset THEN
+	        IF NOT #SxStartAut AND "PL_DigValue"(#StartAut) AND "PL_DigValue"(#AutAct) AND #xResetEnabled THEN
+	            "PL_DigSetValTrue"(#P_Rst);
+	            #xResetEnabled := false;
+	            IF #xFeatRstProtectTrip AND #xProtect_N THEN
+	                #SxRstProtectDone := true;
+	            END_IF;
+	            // A82d
+	            IF #xFeatRstProtectTrip AND #xTrip_N THEN
+	                #SxRstTripDone := true;
+	            END_IF;
+	            // A82e
+	            #SxResetNeededMonErr := false;
+	            #SxResetNeededProtect := false;
+	            #SxResetNeededTrip := false;
+	            #SxResetNeededFaultExtCSF := false;
+	            #SxResetNeededRapidStop := false;
+	
+	            "PL_DigSetValFalse"(#R_StpAct);
+	            #SrMonTime := #MonTiDynamic;
+	            IF #xFeatSepMonStop AND "PL_DigValue"(#FbkRunOut) THEN
+	                #SrMonTime := #MonTiDyStop;
+	            END_IF;
+	            // A82f
+	            "PL_DigSetValFalse"(#MonDynErr);
+	            "PL_DigSetValFalse"(#MonDynStopErr);
+	            "PL_DigSetValFalse"(#MonStaErr);
+	            #SxMonTiDynamicProcess := false;
+	            #SxMonTiStatic := false;
+	            #xMonErr := false;
+	        END_IF;
+	    END_IF;
+	    // A82b
+	    #xOSPerRst := ((#xResetEnabled AND #xOpResetRequest AND NOT ("PL_DigValue"(#StopForce) OR "PL_DigValue"(#StartForce))) OR
+	    (NOT "PL_DigValue"(#FbkRunOut) AND "PL_DigValue"(#R_StpAct))) AND #xOSPerRst;
+	    #xInterlocked := (#xIntlock_N OR #xProtect_N OR #SxResetNeededProtect OR
+	    ((NOT "PL_DigValue"(#Start) AND #xPermit_N) AND (NOT "PL_DigValue"(#FbkRun) OR #xMonErr))) AND NOT (("PL_DigValue"(#LocalAct) OR #xSimAct) AND #BypProt);
+	    IF NOT #xForceInputActive AND "PL_DigValue"(#LocalAct) THEN
+	        #xInvalidCommand := NOT #xFeatLocSwitchMode AND "PL_DigValue"(#StartLocal) AND "PL_DigValue"(#StopLocal);
+	        IF #xInvalidCommand THEN
+	            #xErrorNum := 51;
+	        END_IF;
+	        // A831
+	        IF #LocalSetting = 1 OR #LocalSetting = 3 THEN
+	            IF (#xInvalidCommand AND #xFeatControlPriority) OR #xInterlocked THEN
+	                #SxCmdStart := false;
+	            ELSIF NOT #xInvalidCommand
+	                AND NOT (#SxResetNeededMonErr OR #SxResetNeededTrip OR #SxResetNeededFaultExtCSF) THEN    // A833
+	                IF #xFeatLocSwitchMode THEN
+	                    IF "PL_DigValue"(#StartLocal) THEN
+	                        #SxCmdStart := true;
+	                    ELSE    // A837
+	                        #SxCmdStart := false;
+	                    END_IF;
+	                ELSE
+	                    IF "PL_DigValue"(#StartLocal) THEN    // A836
+	                        #SxCmdStart := true;
+	                    ELSIF "PL_DigValue"(#StopLocal) THEN    // A83a
+	                        #SxCmdStart := false;
+	                    END_IF;
+	                END_IF;
+	            END_IF;
+	            // A834
+	        ELSIF #LocalSetting = 2 OR #LocalSetting = 4 THEN    // A832
+	            IF #xSimAct THEN
+	                #SxCmdStart := "PL_DigValue"(#FbkRunOut);
+	            ELSE    // A8
+	                #SxCmdStart := "PL_DigValue"(#FbkRun);
+	            END_IF;
+	        END_IF;
+	        // A83d
+	    ELSIF "PL_DigValue"(#StartForce) OR "PL_DigValue"(#StopForce) THEN    // A8
+	        #xInvalidCommand := "PL_DigValue"(#StartForce) AND "PL_DigValue"(#StopForce);
+	        #xOSPerStart := false;
+	        #xOSPerStop := false;
+	        IF #xInvalidCommand THEN
+	            #xErrorNum := 51;
+	            IF #xFeatControlPriority THEN
+	                #SxCmdStart := false;
+	            END_IF;
+	        ELSE    // A8
+	            IF "PL_DigValue"(#StartForce) THEN
+	                #SxCmdStart := true;
+	            ELSIF "PL_DigValue"(#StopForce) THEN    // A8
+	                #SxCmdStart := false;
+	            END_IF;
+	            // A8
+	        END_IF;
+	    ELSIF "PL_DigValue"(#AutAct) THEN    // A842
+	        #xInvalidCommand := NOT #xFeatSwitchMode AND "PL_DigValue"(#StartAut) AND "PL_DigValue"(#StopAut);
+	        IF #xInvalidCommand THEN
+	            #xErrorNum := 51;
+	        END_IF;
+	        // A84a
+	        IF (#xInvalidCommand AND #xFeatControlPriority) OR #xInterlocked OR #xBadAutST THEN
+	            #SxCmdStart := false;
+	        ELSIF NOT #xInvalidCommand AND NOT (#SxResetNeededMonErr OR #SxResetNeededTrip OR #SxResetNeededFaultExtCSF) THEN    // A847
+	            IF "PL_DigValue"(#StartAut) THEN
+	                #SxCmdStart := true;
+	            ELSIF (NOT #xFeatSwitchMode AND "PL_DigValue"(#StopAut)) OR (NOT "PL_DigValue"(#StartAut) AND #xFeatSwitchMode) THEN   // A84a
+	                #SxCmdStart := false;
+	            END_IF;
+	        END_IF;
+	        // A8
+	    ELSIF "PL_DigValue"(#ManAct) THEN    // A8
+	        #xInvalidCommand := #StopMan AND #StartMan;
+	        IF #xInvalidCommand THEN
+	            #xErrorNum := 51;
+	            #xOSPerStart := false;
+	            #xOSPerStop := false;
+	        END_IF;
+	        // A8
+	        IF (#xInvalidCommand AND #xFeatControlPriority) OR #xInterlocked THEN
+	            #SxCmdStart := false;
+	        ELSIF NOT #xInvalidCommand AND NOT (#SxResetNeededMonErr OR #SxResetNeededTrip OR #SxResetNeededFaultExtCSF) THEN    // A84f
+	            IF #StartMan THEN
+	                #SxCmdStart := true;
+	            ELSIF #StopMan THEN    // A8
+	                #SxCmdStart := false;
+	            END_IF;
+	        END_IF;
+	    END_IF;
+	    // A851
+	    IF NOT #xForceInputActive AND #xMonErr AND NOT (#SxResetNeededFaultExtCSF AND "PL_DigValue"(#LocalAct) AND (#LocalSetting = 2 OR #LocalSetting = 4)) THEN
+	        #SxCmdStart := false;
+	        #xMonSafePosErr := true;
+	    END_IF;
+	    // A8
+	    IF NOT #xFeatEnRapidStp THEN
+	        #RapidStp := false;
+	    END_IF;
+	    // A8
+	    IF (#RapidStp AND #xFeatEnRapidStp) OR "PL_DigValue"(#R_StpAct) THEN
+	        "PL_DigSetValTrue"(#R_StpAct);
+	        #SxCmdStart := false;
+	    END_IF;
+	    // A8
+	    IF #xTrip_N OR #SxResetNeededTrip THEN
+	        #SxCmdStart := false;
+	    END_IF;
+	    // A8
+	    IF (NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct)) AND #SxResetNeededFaultExtCSF) OR #xFaultExtCSF THEN
+	        #SxCmdStart := false;
+	    END_IF;
+	    // A8
+	    "PL_DigSetVal"(ToValue := (NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct) AND NOT #xFeatIntLckMon) AND #xInterlocked AND NOT #xForceInputActive)
+	                       OR #xTrip_N OR #SxResetNeededTrip,
+	                       Value := #LockAct);
+	        IF NOT #SxCmdStart AND "PL_DigValue"(#Start) AND "PL_DigValue"(#FbkRunOut) AND #IdleTime > 0.0
+	            AND NOT #xMonErr AND NOT ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct)) THEN
+	        #SxWaitToFbkStop := true;
+	    ELSIF NOT "PL_DigValue"(#FbkRunOut) OR #IdleTime <= 0.0 OR #xMonErr OR ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct)) THEN     // A85a
+	        #SxWaitToFbkStop := false;
+	    END_IF;
+	    // A8
+	    IF NOT #SxPrevCmdStart AND #SxCmdStart AND #SxWaitToFbkStop THEN
+	        "PL_DigSetValFalse"(#Start);
+	    END_IF;
+	    // A8
+	    IF #IdleTime > 0.0 AND #SxWaitToFbkStop THEN
+	        "PL_DigSetValFalse"(#Start);
+	    END_IF;
+	    // A8
+	    IF #IdleTime < 0.0 THEN
+	        #IdleTime := 0.0;
+	    END_IF;
+	    // A8
+	    IF #IdleTime <> #SrOldIdleTime AND #SxStopIdleAct THEN
+	        #SrIdleTime := #IdleTime - #SrOldIdleTime + #SrIdleTime;
+	        IF #SrIdleTime < 0.0 THEN
+	            #SrIdleTime := 0.0;
+	        END_IF;
+	    END_IF;
+	    // A8
+	    #SrOldIdleTime := #IdleTime;
+	    IF #SrOldIdleTime >= #SampleTime AND (NOT "PL_DigValue"(#FbkRunOut) OR #SxStopIdleAct) AND NOT "PL_DigValue"(#Start) THEN
+	        IF #SrIdleTime >= #SampleTime THEN
+	            #SrIdleTime := #SrIdleTime - #SampleTime;
+	            IF (#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct) THEN
+	                #SxStopIdleAct := false;
+	            ELSE    // A8
+	                #SxStopIdleAct := true;
+	            END_IF;
+	            // A8
+	            IF NOT #SxPrevCmdStart AND #SxCmdStart THEN
+	                #SxCmdStart := false;
+	            END_IF;
+	        ELSE    // A8
+	            #SxStopIdleAct := false;
+	        END_IF;
+	    ELSE    // A8
+	        #SxStopIdleAct := false;
+	        #SrIdleTime := #IdleTime;
+	    END_IF;
+	    // A8
+	    IF NOT #SxCmdStart THEN
+	        "PL_DigSetValFalse"(#WarnAct);
+	    ELSIF (#WarnTiAut >= #SampleTime AND "PL_DigValue"(#AutAct))
+	        OR (#WarnTiMan >= #SampleTime
+	        AND (("PL_DigValue"(#LocalAct) AND #xForceInputActive) OR "PL_DigValue"(#ManAct))) THEN    // A86d
+	        IF "PL_DigValue"(#AutAct) THEN
+	            IF #SxCmdStart <> #SxPrevCmdStart THEN
+	                #SrWarnTime := #WarnTiAut;
+	            END_IF;
+	        ELSE
+	            IF #SxCmdStart <> #SxPrevCmdStart THEN    // A8
+	                #SrWarnTime := #WarnTiMan;
+	            END_IF;
+	        END_IF;
+	        // A86f
+	        IF #SrWarnTime >= #SampleTime THEN
+	            #SrWarnTime := #SrWarnTime - #SampleTime;
+	            "PL_DigSetValTrue"(#WarnAct);
+	        ELSE    // A8
+	            "PL_DigSetValFalse"(#WarnAct);
+	        END_IF;
+	    ELSE    // A8
+	        "PL_DigSetValFalse"(#WarnAct);
+	    END_IF;
+	    // A8
+	    "PL_DigSetQC"(ToQC := "PL".QC.good,
+	                  Value := #WarnAct);
+	    IF NOT "PL_DigValue"(#WarnAct) AND NOT #SxStopIdleAct AND NOT #SxWaitToFbkStop THEN
+	        "PL_DigSetVal"(ToValue := #SxCmdStart,
+	                           Value := #Start);
+	    END_IF;
+	    // A8
+	    IF (#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct) AND #xSimAct THEN
+	        #xErrorNum := 52;
+	    END_IF;
+	    // A8
+	    #xSimOnFbkDelay := false;
+	    IF NOT (#xErrorNum = 52) AND #xSimAct THEN
+	        IF #xFeatTrackFbkSig THEN
+	            #xSimOnFbkDelay := true;
+	        ELSE    // A8
+	            "PL_DigSetVal"(ToValue := "PL_DigValue"(#Start),
+	                               Value := #FbkRunOut);
+	        END_IF;
+	        "PL_DigSetQC"(ToQC := "PL".QC.sim,
+	                      Value := #FbkRunOut);
+	        "PL_DigSetQC"(ToQC := "PL".QC.sim,
+	                      Value := #Start);
+	        "PL_DigSetQC"(ToQC := "PL".QC.sim,
+	                      Value := #P_Start);
+	        "PL_DigSetQC"(ToQC := "PL".QC.sim,
+	                      Value := #P_Stop);
+	        
+	        IF "PL_DigValue"(#SimLiOp) THEN
+	            #Buffer_at.SimAV := #SimAV_Li;
+	            #SimAV := #SimAV_Li;
+	        END_IF;
+	        // A8
+	    ELSE    // A8
+	        #FbkRunOut := #FbkRun;
+	        "PL_DigSetQC"(ToQC := "PL".QC.good,
+	                      Value := #Start);
+	        "PL_DigSetQC"(ToQC := "PL".QC.good,
+	                      Value := #P_Start);
+	        "PL_DigSetQC"(ToQC := "PL".QC.good,
+	                      Value := #P_Stop);
+	    END_IF;
+	    // A8
+	    IF "PL_DigValue"(#SimLiOp) THEN
+	        #SimOn := "PL_DigValue"(#SimOnLi);
+	    END_IF;
+	    // A8
+	    #xFbkOK := ("PL_DigValue"(#Start) AND "PL_DigValue"(#FbkRunOut)) OR (NOT "PL_DigValue"(#Start) AND NOT "PL_DigValue"(#FbkRunOut));
+	    IF #MonTiDynamic < #SampleTime THEN
+	        #MonTiDynamic := #SampleTime;
+	    END_IF;
+	    // A8
+	    IF #MonTiDyStop < #SampleTime THEN
+	        #MonTiDyStop := #SampleTime;
+	    END_IF;
+	    // A8
+	    IF #MonTiStatic > #MonTiDynamic THEN
+	        #MonTiStatic := #MonTiDynamic;
+	    END_IF;
+	    // A8
+	    IF #MonTiStatic < 0.0 THEN
+	        #MonTiStatic := 0.0;
+	    END_IF;
+	    // A8
+	    IF ("PL_DigValue"(#Start) <> "PL_DigValue"(#FbkRunOut)) AND (#Monitor OR #xSimOnFbkDelay) AND (#SxCmdStart = #SxPrevCmdStart OR #xMonSafePosErr) AND NOT #WarnAct.%X7 THEN
+	        IF #SxFbkRun = "PL_DigValue"(#FbkRunOut) THEN
+	            #SxMonTiDynamicProcess := true;
+	        END_IF;
+	        // A8
+	        IF #SxFbkRun <> "PL_DigValue"(#FbkRunOut) AND #SxStart = "PL_DigValue"(#Start) AND NOT #SxMonTiDynamicProcess THEN
+	            #SrMonTime := #MonTiStatic;
+	            #SxMonTiStatic := true;
+	        END_IF;
+	        // A8
+	        IF #SrMonTime >= #SampleTime THEN
+	            #SxMonTiDynamicProcess := true;
+	            #SrMonTime := #SrMonTime - #SampleTime;
+	        ELSE
+	            IF #xSimOnFbkDelay THEN    // A8
+	                "PL_DigSetVal"(ToValue := "PL_DigValue"(#Start),
+	                                   Value := #FbkRunOut);
+	            ELSE
+	                IF #SxMonTiStatic THEN    // A8
+	                    "PL_DigSetValTrue"(#MonStaErr);
+	                ELSE
+	                    IF NOT "PL_DigValue"(#Start) AND #xFeatSepMonStop THEN   // A8
+	                        "PL_DigSetValTrue"(#MonDynStopErr);
+	                    ELSE    // A8
+	                        "PL_DigSetValTrue"(#MonDynErr);
+	                    END_IF;
+	                END_IF;
+	            END_IF;
+	            // A8
+	            #SxMonTiDynamicProcess := false;
+	        END_IF;
+	    ELSIF NOT #SxResetNeededMonErr THEN   // A8
+	        #SrMonTime := #MonTiDynamic;
+	        IF #xFeatSepMonStop AND "PL_DigValue"(#FbkRunOut) AND NOT "PL_DigValue"(#Start) THEN
+	            #SrMonTime := #MonTiDyStop;
+	        END_IF;
+	        // A8
+	        "PL_DigSetValFalse"(#MonDynErr);
+	        "PL_DigSetValFalse"(#MonDynStopErr);
+	        "PL_DigSetValFalse"(#MonStaErr);
+	        #SxMonTiDynamicProcess := false;
+	        #SxMonTiStatic := false;
+	    END_IF;
+	    // A8
+	    #CurrMon := 0;
+	    IF #SxMonTiDynamicProcess THEN
+	        IF #SrMonTime > 2.147483647E+9 THEN
+	            #CurrMon := 2147483647;
+	        ELSE    // A8
+	            #CurrMon := REAL_TO_DINT(#SrMonTime);
+	        END_IF;
+	    END_IF;
+	    // A890
+	    IF ("PL_DigValue"(#MonStaErr) OR "PL_DigValue"(#MonDynErr) OR "PL_DigValue"(#MonDynStopErr))
+	        AND NOT (("PL_DigValue"(#StartForce) OR "PL_DigValue"(#StopForce))
+	        AND (("PL_DigValue"(#LocalAct) AND #xFeatForceLocal AND (#LocalSetting = 1 OR #LocalSetting = 3))
+	        OR NOT "PL_DigValue"(#LocalAct))) THEN
+	        
+	        "PL_DigSetValFalse"(#Start);
+	        
+	    END_IF;
+	    // A893
+	    IF (#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct) AND #xFeatNoImpInLocal24 THEN
+	        #srPulseTimeStart := - #SampleTime;
+	        #srPulseTimeStop := - #SampleTime;
+	    END_IF;
+	    // A894
+	    IF #PulseWidth < #SampleTime THEN
+	        #PulseWidth := #SampleTime;
+	    END_IF;
+	    // A8
+	    IF #srPulseTimeStart >= 0.0 AND "PL_DigValue"(#Start) THEN
+	        #srPulseTimeStart := #srPulseTimeStart - #SampleTime;
+	    END_IF;
+	    // A8
+	    IF NOT "PL_DigValue"(#Start) THEN
+	        #srPulseTimeStart := #PulseWidth;
+	    END_IF;
+	    // A8
+	    "PL_DigSetVal"(ToValue := #srPulseTimeStart >= 0.0 AND "PL_DigValue"(#Start),
+	                       Value := #P_Start);
+	    
+	    IF NOT "PL_DigValue"(#Start) AND #srPulseTimeStop >= 0.0 THEN
+	        #srPulseTimeStop := #srPulseTimeStop - #SampleTime;
+	    END_IF;
+	    // A8
+	    IF "PL_DigValue"(#Start) THEN
+	        #srPulseTimeStop := #PulseWidth;
+	    END_IF;
+	    // A899
+	    "PL_DigSetVal"(ToValue := NOT (NOT "PL_DigValue"(#Start) AND #srPulseTimeStop >= 0.0),
+	                       Value := #P_Stop);
+	    
+	    #ErrorNum := #xErrorNum;
+	    #stcInST.b0 := #FbkRunOut;
+	    #stcInST.b1 := #LocalLi;
+	    #stcInST.b2 := #StartLocal;
+	    #stcInST.b3 := #StopLocal;
+	    #stcInST.b4 := #Trip;
+	    #stcInST.b5 := #StartChnST;
+	    IF #xFeatBadAutST THEN
+	        #stcInST.b6 := #StartAut;
+	        #stcInST.b7 := #StopAut;
+	        #ST_Worst := "PL_SelST16"(InST := #stcInST,
+	                             Num := 8,
+	                             SelPrio := 0);
+	    ELSE    // A89a
+	        #ST_Worst := "PL_SelST16"(InST := #stcInST,
+	                                  Num := 6,
+	                                  SelPrio := 0);
+	    END_IF;
+	    // A89b
+	    IF #SnRunUpCyc > 0 THEN
+	        #SnRunUpCyc := #SnRunUpCyc - 1;
+	    END_IF;
+	    // A89c
+	    #Run := "PL_DigAddQC"(Value := "PL_DigValue"(#Start) AND "PL_DigValue"(#FbkRunOut)
+	                          AND NOT ("PL_DigValue"(#MonDynErr) OR "PL_DigValue"(#MonDynStopErr) OR "PL_DigValue"(#MonStaErr)),
+	                          QC := "PL_DigQC"(#FbkRunOut));
+	    #Stop := "PL_DigAddQC"(Value := NOT "PL_DigValue"(#Start) AND NOT "PL_DigValue"(#FbkRunOut)
+	                           AND NOT ("PL_DigValue"(#MonDynErr) OR "PL_DigValue"(#MonDynStopErr) OR "PL_DigValue"(#MonStaErr)),
+	                           QC := "PL_DigQC"(#FbkRunOut));
+	    
+	    #stcInST.b0 := #StartAut;
+	    #stcInST.b1 := #StopAut;
+	    #AutoST := "PL_SelST16"(InST := #stcInST,
+	                       Num := 2,
+	                       SelPrio := 0);
+	END_IF;
+	
+	// A7ef
+	IF (#SnRunUpCyc = 0 AND #xOB_Cycle) OR #xOB_Start THEN
+	    IF #SnMsgToggle >= 1 THEN
+	        #SnMsgToggle := 0;
+	    ELSE    // A8
+	        #SnMsgToggle := 1;
+	    END_IF;
+	    // A8
+	    IF "PL_DigValue"(#OosAct) THEN
+	        #SbMsgEff1 := 0;
+	    ELSE    // A8
+	        #SbMsgEff1_atBool[0] := ("PL_DigValue"(#MonDynErr) OR "PL_DigValue"(#MonDynStopErr) OR "PL_DigValue"(#MonStaErr))
+	        AND NOT #xFbkOK AND NOT ("PL_DigValue"(#MsgLock) AND #xFeatMsgLockAll);
+	        #SbMsgEff1_atBool[1] := NOT ("PL_DigValue"(#MsgLock) AND #xFeatMsgLockAll) AND #xTrip_N;
+	        #SbMsgEff1_atBool[2] := NOT ("PL_DigValue"(#MsgLock) AND #xFeatMsgLockAll) AND "PL_DigValue"(#CSF);
+	        #SbMsgEff1_atBool[3] := NOT ("PL_DigValue"(#MsgLock) AND #xFeatMsgLockAll) AND "PL_DigValue"(#ExtMsg1);
+	        #SbMsgEff1_atBool[4] := NOT ("PL_DigValue"(#MsgLock) AND #xFeatMsgLockAll) AND "PL_DigValue"(#ExtMsg2);
+	        #SbMsgEff1_atBool[5] := NOT ("PL_DigValue"(#MsgLock) AND #xFeatMsgLockAll) AND "PL_DigValue"(#ExtMsg3);
+	        #SbMsgEff1_atBool[6] := false;
+	        #SbMsgEff1_atBool[7] := false;
+	    END_IF;
+	END_IF;
+	// A8
+	IF #xOB_Cycle OR #xOB_Start THEN
+	    #xMonErr := "PL_DigValue"(#MonDynErr) OR "PL_DigValue"(#MonDynStopErr) OR "PL_DigValue"(#MonStaErr);
+	    IF NOT "PL_DigValue"(#OosAct) THEN
+	        "PL_DigSetVal"(ToValue := #xMonErr OR "PL_DigValue"(#CSF) OR #SxResetNeededTrip OR #xTrip_N OR #xFaultExtCSF OR #SxResetNeededFaultExtCSF,
+	                           Value := #GrpErr);
+	        "PL_DigSetVal"(ToValue := NOT (NOT (NOT #xFeatCSFwithError AND "PL_DigValue"(#CSF)) AND "PL_DigValue"(#GrpErr))
+	                           AND NOT #SxStopIdleAct AND "PL_DigValue"(#AutAct) AND NOT #xForceInputActive AND NOT "PL_DigValue"(#LockAct)
+	                           AND NOT "PL_DigValue"(#R_StpAct),
+	                           Value := #RdyToStart);
+	        
+	    END_IF;
+	    
+	    IF NOT "PL_DigValue"(#OosAct) THEN
+	        #dwStatus1_atBool[24] := #Occupied;
+	        #dwStatus1_atBool[25] := #BatchEn;
+	        #dwStatus1_atBool[26] := #xSimAct;
+	        #dwStatus1_atBool[30] := "PL_DigValue"(#LocalAct);
+	        #dwStatus1_atBool[31] := #xInterlocked;
+	        #dwStatus1_atBool[16] := "PL_DigValue"(#Start);
+	        #dwStatus1_atBool[17] := NOT "PL_DigValue"(#Start);
+	        #dwStatus1_atBool[18] := "PL_DigValue"(#MonDynStopErr);
+	        #dwStatus1_atBool[19] := "PL_DigValue"(#MonStaErr);
+	        #dwStatus1_atBool[20] := "PL_DigValue"(#MonDynErr) OR "PL_DigValue"(#MonDynStopErr);
+	        #dwStatus1_atBool[21] := ((#BypProt AND #xSimAct) OR
+	        (#LocalSetting = 1 OR #LocalSetting = 3) AND "PL_DigValue"(#LocalAct) AND #BypProt)
+	        OR ((#LocalSetting = 2 OR #LocalSetting = 4) AND "PL_DigValue"(#LocalAct) AND
+	        (NOT #xFeatIntLckMon OR #BypProt)) OR #xForceInputActive;
+	        #dwStatus1_atBool[22] := #xInvalidCommand OR #xInvalidMode;
+	        #dwStatus1_atBool[23] := #xOutStatusWord1x15;
+	        #dwStatus1_atBool[8] := #xIntlock_N;
+	        #dwStatus1_atBool[9] := NOT ("PL_DigValue"(#Start) OR "PL_DigValue"(#FbkRun)) AND #xPermit_N;
+	        #dwStatus1_atBool[10] := #xProtect_N OR #SxResetNeededProtect;
+	        #dwStatus1_atBool[11] := #xTrip_N OR #SxResetNeededTrip;
+	        #dwStatus1_atBool[12] := ((NOT "PL_DigValue"(#StopForce) AND "PL_DigValue"(#StartForce))
+	        OR (#xForceInputActive AND #xInvalidCommand AND #SxCmdStart))
+	        AND (("PL_DigValue"(#LocalAct) AND #xFeatForceLocal
+	        AND (#LocalSetting = 1 OR #LocalSetting = 3)) OR NOT "PL_DigValue"(#LocalAct));
+	        
+	        #dwStatus1_atBool[13] := ((NOT "PL_DigValue"(#StartForce) AND "PL_DigValue"(#StopForce))
+	        OR (#xForceInputActive AND #xInvalidCommand AND NOT #SxCmdStart))
+	        AND (("PL_DigValue"(#LocalAct) AND #xFeatForceLocal
+	        AND (#LocalSetting = 1 OR #LocalSetting = 3)) OR NOT "PL_DigValue"(#LocalAct));
+	        #dwStatus1_atBool[15] := #xIntl_En;
+	        #dwStatus1_atBool[0] := NOT #xOSPerRst AND #xResetEnabled AND "PL_DigValue"(#AutAct);
+	        #dwStatus1_atBool[1] := "PL_DigValue"(#WarnAct) OR #SxStopIdleAct;
+	        IF #xFeatBypass THEN
+	            #dwStatus1_atBool[2] := (#Intl_En AND #Intlock.%X6)
+	            OR (#Prot_En AND #Protect.%X6)
+	            OR (#Perm_En AND #Permit.%X6);
+	        ELSE    // A8
+	            #dwStatus1_atBool[2] := ("PL_DigValue"(#Intlock) AND #Intl_En AND "PL_DigQC"(#Intlock) = "PL".QC.sim)
+	            OR ("PL_DigValue"(#Protect) AND #Prot_En AND "PL_DigQC"(#Protect) = "PL".QC.sim)
+	            OR ("PL_DigValue"(#Permit) AND #Perm_En AND "PL_DigQC"(#Permit) = "PL".QC.sim);
+	        END_IF;
+	        // A8b0
+	        IF #xBadAutST THEN
+	            #dwStatus1_atBool[3] := false;
+	            #dwStatus1_atBool[4] := true;
+	        ELSIF (NOT "PL_DigValue"(#StopAut) OR #xFeatSwitchMode) AND "PL_DigValue"(#StartAut) THEN   // A8b1
+	            #dwStatus1_atBool[3] := true;
+	            #dwStatus1_atBool[4] := false;
+	        ELSIF NOT "PL_DigValue"(#StartAut) AND ("PL_DigValue"(#StopAut) OR #xFeatSwitchMode) THEN    // A8
+	            #dwStatus1_atBool[3] := false;
+	            #dwStatus1_atBool[4] := true;
+	        ELSIF #xFeatControlPriority AND "PL_DigValue"(#StartAut) AND "PL_DigValue"(#StopAut) THEN   // A8a
+	            #dwStatus1_atBool[3] := false;
+	            #dwStatus1_atBool[4] := true;
+	        ELSE    // A8
+	            #dwStatus1_atBool[3] := #SxCmdStart;
+	            #dwStatus1_atBool[4] := NOT #SxCmdStart;
+	        END_IF;
+	        // A8b2
+	        #dwStatus1_atBool[5] := #xFaultExtCSF OR #SxResetNeededFaultExtCSF;
+	        #dwStatus1_atBool[6] := #xPerm_En;
+	        #dwStatus1_atBool[7] := #xProt_En;
+	        
+	        #dwStatus2 := #Buffer_at.MsgStatus;
+	        #dwStatus2_atBool[24] := "PL_DigValue"(#MsgLock);
+	        #dwStatus2_atBool[11] := #LocalSetting = 2 OR #LocalSetting = 4;
+	        #xError := #xMonErr OR #xTrip_N OR #xFaultExtCSF OR #SxResetNeededTrip OR #SxResetNeededFaultExtCSF;
+	        #dwStatus2_atBool[12] := NOT "PL_DigValue"(#Start) AND NOT "PL_DigValue"(#FbkRunOut) AND NOT #xError;
+	        #dwStatus2_atBool[13] := NOT "PL_DigValue"(#Start) AND "PL_DigValue"(#FbkRunOut) AND NOT #xError;
+	        #dwStatus2_atBool[14] := NOT "PL_DigValue"(#FbkRunOut) AND "PL_DigValue"(#Start) AND NOT #xError;
+	        #dwStatus2_atBool[15] := "PL_DigValue"(#Start) AND "PL_DigValue"(#FbkRunOut) AND NOT #xError;
+	        #dwStatus2_atBool[0] := #xError;
+	        #dwStatus2_atBool[1] := NOT ("PL_DigQC"(#StartChnST) = "PL".QC.notconn);
+	        #dwStatus2_atBool[6] := #xIntl_En OR #xPerm_En OR #xProt_En;
+	        
+	        #dwStatus3_atBool[24] := #Buffer_atBool[139];
+	        #dwStatus3_atBool[25] := #Buffer_atBool[140];
+	        #dwStatus3_atBool[26] := #Buffer_atBool[141];
+	        #dwStatus3_atBool[27] := #Buffer_atBool[142];
+	        #dwStatus3_atBool[28] := #Buffer_atBool[143];
+	        #dwStatus3_atBool[29] := #Buffer_atBool[128];
+	        #dwStatus3_atBool[30] := #dwStatus3_atBool[24] OR #dwStatus3_atBool[25] OR #dwStatus3_atBool[26]
+	        OR #dwStatus3_atBool[27] OR #dwStatus3_atBool[28] OR #dwStatus3_atBool[29];
+	        #dwStatus3_atBool[19] := #Permit.%X6;
+	        #dwStatus3_atBool[20] := #Intlock.%X6;
+	        #dwStatus3_atBool[21] := #Protect.%X6;
+	        #dwStatus3_atBool[22] := #xFeatBypass;
+	        #dwStatus3_atBool[23] := #Monitor;
+	        #dwStatus3_atBool[10] := "PL_DigValue"(#SimLiOp);
+	        #dwStatus3_atBool[11] := #xFeatEnRapidStp;
+	        #dwStatus3_atBool[15] := "PL_DigValue"(#R_StpAct);
+	        #dwStatus3_atBool[2] := NOT (NOT #xResetEnabled AND "PL_DigValue"(#AutAct)) AND
+	        NOT ((#dwStatus1_atBool[3] = #SxCmdStart) AND (#dwStatus1_atBool[4] = (NOT #SxCmdStart)));
+	        #dwStatus3_atBool[4] := "PL_DigValue"(#GrpErr);
+	        #dwStatus3_atBool[5] := "PL_DigValue"(#RdyToStart);
+	        #dwStatus3_atBool[6] := NOT ("PL_AnaQC"(#UserAna1) = "PL".QC.notconn);
+	        #dwStatus3_atBool[7] := NOT ("PL_AnaQC"(#UserAna2) = "PL".QC.notconn);
+	        #dwStatus4_atByte[3] := 16#0;
+	        #dwStatus4_atByte[1] := 16#0;
+	        #dwStatus4_atBool[17] := NOT ("PL_DigQC"(#Trip) = "PL".QC.notconn);
+	        #dwStatus4_atBool[18] := NOT ("PL_DigQC"(#FbkRun) = "PL".QC.notconn);
+	        #dwStatus4_atBool[7] := #xFeatSepMonStop;
+	        #dwStatus5_atByte[3] := 16#0;
+	        #dwStatus5_atByte[2] := 16#0;
+	    ELSE    // A8
+	        #dwStatus1 := #dwStatus1 AND 16#18000000;
+	        #dwStatus2 := #Buffer_at.MsgStatus AND 16#7E;
+	        #dwStatus3 := 16#0;
+	        #dwStatus4 := 16#0;
+	        #dwStatus5 := 16#0;
+	    END_IF;
+	    // A8
+	    #dwStatus1_atBool[27] := "PL_DigValue"(#OosAct);
+	    #dwStatus1_atBool[28] := "PL_DigValue"(#OosLi);
+	    #dwStatus1_atBool[29] := "PL_DigValue"(#AutAct);
+	    
+	    #dwStatus2_atBool[7] := #MS_RelOp;
+	    
+	    #dwStatus3_atBool[0] := #SxCmdStart;
+	    #dwStatus3_atBool[1] := NOT #SxCmdStart AND NOT #dwStatus3_atBool[15];
+	    #dwStatus4_atBool[16] := #Buffer[4] = 16#FF;
+	    #Status1 := #dwStatus1;
+	    #Status2 := #dwStatus2;
+	    #Status3 := #dwStatus3;
+	    #Status4 := #dwStatus4;
+	    #Status5 := #dwStatus5;
+	
+	    #OS_PermOut := #OS_Perm;
+	    IF #xOB_Start THEN
+	        #OS_PermLog_atDw := 16#0;
+	    ELSIF "PL_DigValue"(#OosAct) THEN    // A8
+	        #OS_PermLog_atDw := 16#1002 AND #OS_PermOut_atDw;
+	    ELSE    // A8
+	        #OS_PermLog.Bit0 := NOT #xBumpLessTransfer AND #xOSPerAuto;
+	        #OS_PermLog.Bit1 := #xOSPerMan;
+	        #OS_PermLog.Bit2 := #xOSPerLocal;
+	        #OS_PermLog.Bit3 := #xOSPerOOS;
+	        #OS_PermLog.Bit4 := #xOSPerStop;
+	        #OS_PermLog.Bit5 := #xOSPerStart;
+	        #OS_PermLog.Bit7 := #xOSPerRst;
+	        #OS_PermLog.Bit8 := #xOSPerDynMon;
+	        #OS_PermLog.Bit9 := #xOSPerStaMon;
+	        #OS_PermLog.Bit10 := #xOSPerMonOnOff;
+	        #OS_PermLog.Bit11 := NOT "PL_DigValue"(#SimLiOp) AND #xOSPerSim;
+	        #OS_PermLog.Bit12 := #xOSPerMSRel AND "PL_DigValue"(#ManAct);
+	        #OS_PermLog.Bit13 := #xOSPerAVAHLim;
+	        #OS_PermLog.Bit14 := #xOSPerAVWHLim;
+	        #OS_PermLog.Bit15 := #xOSPerAVTHLim;
+	        #OS_PermLog.Bit16 := #xOSPerHyst;
+	        #OS_PermLog.Bit17 := #xOSPerAVALLim;
+	        #OS_PermLog.Bit18 := #xOSPerAVWLLim;
+	        #OS_PermLog.Bit19 := #xOSPerAVTLLim;
+	        #OS_PermLog.Bit20 := #xOSPerAVAHMsgEn;
+	        #OS_PermLog.Bit21 := #xOSPerAVWHMsgEn;
+	        #OS_PermLog.Bit22 := #xOSPerAVTHMsgEn;
+	        #OS_PermLog.Bit23 := #xOSPerAVTLMsgEn;
+	        #OS_PermLog.Bit24 := #xOSPerAVWLMsgEn;
+	        #OS_PermLog.Bit25 := #xOSPerAVALMsgEn;
+	        #OS_PermLog.Bit26 := #xOSPerSimAV AND #SimOn AND NOT "PL_DigValue"(#SimLiOp);
+	        #OS_PermLog.Bit31 := #OS_PermLog.Bit31 AND #xFeatEnRapidStp AND NOT "PL_DigValue"(#R_StpAct);
+	    END_IF;
+	    // A8
+	    IF NOT "PL_DigValue"(#OosAct) THEN
+	        IF (#xLiResetRequest AND #xResetEnabled) OR (NOT "PL_DigValue"(#FbkRunOut) AND "PL_DigValue"(#R_StpAct)) THEN
+	            "PL_DigSetValTrue"(#RdyToReset);
+	        ELSE    // A8
+	            "PL_DigSetValFalse"(#RdyToReset);
+	        END_IF;
+	        // A8
+	        #SxFbkRun := "PL_DigValue"(#FbkRunOut);
+	        #SxStart := "PL_DigValue"(#Start);
+	        #SxPrevCmdStart := #SxCmdStart;
+	        #SxStopAut := "PL_DigValue"(#StopAut);
+	        #SxStartAut := "PL_DigValue"(#StartAut);
+	        #SxLocalLi := "PL_DigValue"(#LocalLi);
+	        #SxRstLi := "PL_DigValue"(#RstLi);
+	        #SxStartLocal := "PL_DigValue"(#StartLocal);
+	        #SxStopLocal := "PL_DigValue"(#StopLocal);
+	    END_IF;
+	    // A8
+	    #OosOp := false;
+	    IF NOT "PL_DigValue"(#OosAct) THEN
+	        #RstOp := false;
+	        #AutModOp := false;
+	        #LocalOp := false;
+	        #ManModOp := false;
+	        #StartMan := false;
+	        #StopMan := false;
+	        #RapidStp := false;
+	        IF #xFeatResetAutModLi THEN
+	            "PL_DigSetValFalse"(#AutModLi);
+	            "PL_DigSetValFalse"(#ManModLi);
+	        END_IF;
+	        // A8
+	        IF #xFeatResetAutInLi THEN
+	            "PL_DigSetValFalse"(#RstLi);
+	            "PL_DigSetValFalse"(#StartAut);
+	            "PL_DigSetValFalse"(#StopAut);
+	        END_IF;
+	    END_IF;
+	END_IF;
+	// A8
+END_FUNCTION_BLOCK
+

@@ -1,0 +1,19 @@
+﻿FUNCTION "PL_DigSetQC" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      ToQC : Byte;
+   END_VAR
+
+   VAR_IN_OUT 
+      Value : Byte;
+   END_VAR
+
+
+BEGIN
+	#Value.%X0 := #ToQC.%X0;
+	#Value.%X1 := #ToQC.%X1;
+	#Value.%X2 := #ToQC.%X2;
+	#Value.%X3 := #ToQC.%X3;
+END_FUNCTION
+

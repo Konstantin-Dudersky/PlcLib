@@ -1,0 +1,16 @@
+﻿FUNCTION "SM_StateE" : Bool
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      state : Int;
+   END_VAR
+
+   VAR_IN_OUT 
+      inst : "typeSM";
+   END_VAR
+
+
+BEGIN
+	#SM_StateE := (#state = #inst.state);
+END_FUNCTION
+

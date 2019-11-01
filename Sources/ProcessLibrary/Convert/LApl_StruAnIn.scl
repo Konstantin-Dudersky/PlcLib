@@ -1,0 +1,18 @@
+﻿FUNCTION "LApl_StruAnIn" : Void
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      In : "PL_Ana";   // Analog value with structure
+   END_VAR
+
+   VAR_OUTPUT 
+      Value : Real;   // Analog value
+      ST : Byte;   // Signal status
+   END_VAR
+
+
+BEGIN
+	#Value := #In.Value;
+	#ST := #In.ST;
+END_FUNCTION
+

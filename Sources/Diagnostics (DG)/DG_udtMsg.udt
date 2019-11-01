@@ -1,0 +1,11 @@
+﻿TYPE "DG_udtMsg"
+VERSION : 0.1
+   STRUCT
+      state : Int;
+      rank : Int := 2;
+      withAck : Bool := true;
+      edgeDetect : Bool;
+   END_STRUCT;
+
+END_TYPE
+

@@ -1,0 +1,23 @@
+﻿FUNCTION "SM_Case" : Int
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      sampleTime : Time;
+   END_VAR
+
+   VAR_IN_OUT 
+      inst : "typeSM";
+   END_VAR
+
+
+BEGIN
+	IF #inst.stateChanged AND (#inst.stateTime > 0) THEN
+	    #inst.stateChanged := false;
+	END_IF;
+	
+	#inst.sampleTime := #sampleTime;
+	
+	#inst.stateTime := #inst.stateTime + #inst.sampleTime;
+	#SM_Case := #inst.state;
+END_FUNCTION
+

@@ -1,0 +1,11 @@
+﻿TYPE "EventState"
+VERSION : 0.1
+   STRUCT
+      Control { ExternalVisible := 'False'} : DWord;   // 0=Ack; 2=Lock; 3=Locked
+      InUnack { ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
+      InAck { ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
+      OutUnack { ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
+   END_STRUCT;
+
+END_TYPE
+

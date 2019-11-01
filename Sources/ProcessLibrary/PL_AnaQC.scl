@@ -1,0 +1,27 @@
+﻿FUNCTION "PL_AnaQC" : USInt
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      In : Real;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         Dw : DWord;
+         B : Byte;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	#temp.Dw := REAL_TO_DWORD(#In);
+	
+	#temp.B := 16#0;
+	#temp.B.%X0 := #temp.Dw.%X0;
+	#temp.B.%X1 := #temp.Dw.%X1;
+	#temp.B.%X2 := #temp.Dw.%X2;
+	#temp.B.%X3 := #temp.Dw.%X3;
+	
+	#PL_AnaQC := BYTE_TO_USINT(#temp.B);
+END_FUNCTION
+

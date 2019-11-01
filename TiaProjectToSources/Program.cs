@@ -4,6 +4,7 @@ using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Blocks;
 using Siemens.Engineering.SW.Types;
+using Siemens.Engineering.SW.ExternalSources;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,6 +19,10 @@ namespace TiaLibraryExport
 
             using (TiaPortal tiaPortal = new TiaPortal())
             {
+                if (!Directory.Exists(Properties.Settings.Default.EXPORT_BASE))
+                    Console.WriteLine("Export folder don`t exist");
+
+
                 Project project = null;
 
                 try
@@ -38,17 +43,21 @@ namespace TiaLibraryExport
                         foreach (var dev in project.Devices)
                         {
                             var plcSoftware = GetPlcSoftware(dev);
+                            if (Properties.Settings.Default.PLC_NAME == plcSoftware.Name)
+                            {
+                                Console.WriteLine("Found PLC software: " + plcSoftware.Name);
 
-                            // очищаем папку
-                            DirectoryInfo di = new DirectoryInfo(Properties.Settings.Default.EXPORT_BASE);
-                            foreach (FileInfo file in di.GetFiles())
-                                file.Delete();
-                            foreach (DirectoryInfo dir in di.GetDirectories())
-                                dir.Delete(true);
+                                // очищаем папку
+                                DirectoryInfo di = new DirectoryInfo(Properties.Settings.Default.EXPORT_BASE);
+                                foreach (FileInfo file in di.GetFiles())
+                                    file.Delete();
+                                foreach (DirectoryInfo dir in di.GetDirectories())
+                                    dir.Delete(true);
 
-                            EnumerateAllBlocks(plcSoftware, Properties.Settings.Default.EXPORT_BASE);
+                                EnumerateAllBlocks(plcSoftware, Properties.Settings.Default.EXPORT_BASE);
 
-                            EnumerateAllPlcDataTypes(plcSoftware, Properties.Settings.Default.EXPORT_BASE);
+                                EnumerateAllPlcDataTypes(plcSoftware, Properties.Settings.Default.EXPORT_BASE);
+                            }
                         }
                     }
                     finally
@@ -93,7 +102,15 @@ namespace TiaLibraryExport
             Directory.CreateDirectory(path);
 
             foreach (var block in blockUserGroup.Blocks)
-                plcsoftware.ExternalSourceGroup.GenerateSource(new List<PlcBlock> { block }, new FileInfo(path + block.Name + ".scl"));
+            {
+                ProgrammingLanguage lang = block.ProgrammingLanguage;
+                if (lang == ProgrammingLanguage.SCL)
+                    plcsoftware.ExternalSourceGroup.GenerateSource(new List<PlcBlock> { block }, new FileInfo(path + block.Name + ".scl"), GenerateOptions.None);
+                else if (lang == ProgrammingLanguage.DB)
+                    plcsoftware.ExternalSourceGroup.GenerateSource(new List<PlcBlock> { block }, new FileInfo(path + block.Name + ".db"), GenerateOptions.None);
+                else
+                    Console.WriteLine("Block " + block.Name + " not exported, language " + lang);
+            }
 
             foreach (PlcBlockUserGroup subBlockUserGroup in blockUserGroup.Groups)
                 EnumerateBlockGroup(subBlockUserGroup, plcsoftware, path);

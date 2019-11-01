@@ -1,0 +1,722 @@
+﻿FUNCTION_BLOCK "LApl_MotSpdC"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      FwdAut : Bool;   // 1 = запуск в автоматическом режиме в прямом направлении
+      StopAut : Bool;   // 1 = останов в автоматическом режиме
+      RevAut : Bool;   // 1 = запуск в автоматическом режиме в обратном направлении
+      FwdMan : Bool;   // 1 = запуск в ручном режиме в прямом направлении
+      StopMan : Bool;   // 1 = останов в ручном режиме
+      RevMan : Bool;   // 1 = запуск в ручном режиме в прямом направлении
+      DvFdOnAut : Bool;
+      DvFdOffAut : Bool;
+      DvFdOnMan : Bool;
+      DvFdOffMan : Bool;
+      ModLiOp : Bool;   // Источник команд переключения режимов: 0 = Op, 1 = Li
+      AutModOp : Bool;   // 1 = активировать автоматический режим из Op
+      ManModOp : Bool := true;   // 1 = активировать ручной режим из Op
+      AutModLi : Bool;   // 1 = переключение в автоматический режим
+      ManModLi : Bool;   // 1 = переключение в ручной режим
+      LocalLi : Bool;   // 1 = переключение в местный режим
+      LocalOp : Bool;   // 1 = активировать местный режим из Op
+      OosOp : Bool;   // 1 = вывести из эксплуатации из Op
+      OosLi : Bool;   // 1 = вывод из эксплуатации
+      FwdLocal : Bool;   // 1 = пуск в местном режиме
+      StopLocal : Bool;   // 1 = стоп в местном режиме
+      RevLocal : Bool;
+      LocalSetting : Int;   // Настройка местного режима
+      FbkFwd : Bool;   // 1 = сигнал обратной связи при прямом пуске
+      FbkRev : Bool;   // 1 = сигнал обратной связи при реверсивом пуске
+      SP_Int : Real := 1.0;   // Внутреннее задание
+      SP_Ext : Real;   // Внешнее задание
+      SP_HiLim : Real := 100.0;   // Верхнее ограничение задания
+      FactGR : Real := 1.0;   // Factor for gear range (TODO)
+      SP_LoLim : Real := 0.0;   // Нижнее ограничение задания
+      SP_LiOp : Bool;
+      SP_ExtLi : Bool;
+      SP_IntLi : Bool;
+      SP_ExtOp : Bool;
+      SP_IntOp : Bool := true;
+      SP_TrkExt : Bool;
+      SP_RateOn : Bool;
+      SP_RmpOn : Bool;
+      SP_RmpModTime : Bool;
+      SP_UpRaLim : Real := 100.0;
+      SP_DnRaLim : Real := 100.0;
+      SP_RmpTime : Real;
+      SP_RmpTarget : Real;
+      SP_OpScale : Struct
+         High : Real := 100.0;
+         Low : Real;
+      END_STRUCT;
+      Rbk : Real;
+      SimRbk : Real;
+      SimRbkLi : Real;
+      RbkWH_Lim : Real := 90.0;
+      RbkWL_Lim : Real := 10.0;
+      RbkHyst : Real := 1.0;
+      RbkW_DC : Time;
+      RbkW_DG : Time;
+      RbkWH_En : Bool := true;
+      RbkWL_En : Bool := true;
+      RbkWH_MsgEn : Bool := true;
+      RbkWL_MsgEn : Bool := true;
+      RbkOpScale : Struct
+         High : Real := 100.0;
+         Low : Real;
+      END_STRUCT;
+      ER_AH_Lim : Real := 100.0;
+      ER_AL_Lim : Real := -100.0;
+      ER_Hyst : Real := 1.0;
+      ER_A_DC : Real;
+      ER_A_DG : Real;
+      ER_AH_En : Bool := true;
+      ER_AL_En : Bool := true;
+      ER_AH_MsgEn : Bool := true;
+      ER_AL_MsgEn : Bool := true;
+      Monitor : Bool := true;   // 1 = активировать функции контроля обратной связи
+      MonTiStatic : Time := T#3s;   // Контроль обратной связи при остановке или работе
+      MonTiDynamic : Time := T#3s;   // Контроль обратной связи при остановке или запуске
+      MonTiDyStop : Time := T#3s;   // Контроль обратной связи при остановке (TODO)
+      IdleTime : Time := T#5s;   // Время ожидания перезапуска
+      PulseWidth : Time := T#3s;   // Ширина импульса команд P_Start и P_Stop
+      WarnTiMan : Time;   // Предпусковая сигнализация в ручном режиме
+      WarnTiAut : Time;   // Предпусковая сигнализация в автоматическом режиме
+      RapidStp : Bool;   // 1 = быстрое выключение двигателя (TODO)
+      RstOp : Bool;   // Сброс аварий
+      RstLi : Bool;   // 1 = сброс аварий
+      BypProt : Bool;   // 1 = отключить блокировки в ручном режиме и режиме симуляции
+      Trip : Bool := true;   // 1 = тепловая защита в порядке
+      Permit : Bool := true;   // 0 = нет разрешения пуска
+      Perm_en : Bool := true;   // 1 = вход permit активен
+      Intlock : Bool := true;   // 0 = блокировка без сброса активна
+      Intl_en : Bool := true;   // 1 = вход intlock активен
+      Protect : Bool := true;   // 0 = блокировка со сбросом активна
+      Prot_en : Bool := true;   // 1 = вход protect активен
+      FwdForce : Bool;   // 1 = принудительный запуск
+      StopForce : Bool;   // 1 = принудительный останов
+      RevForce : Bool;
+      MsgLock : Bool;   // (TODO)
+      SampleTime : Time := T#100ms;   // Периодичность вызова блока
+      SimLiOp : Bool;   // (TODO)
+      SimOnLi : Bool;   // (TODO)
+      SimOn : Bool;   // (TODO)
+      FaultExt : Bool;   // 1 = внешняя авария
+      CSF : Bool;   // 1 = control system fault
+      SimAV : Real;   // (TODO)
+      SimAV_Li : Real;   // (TODO)
+      AV_AH_Lim : Real := 95.0;   // (TODO)
+      AV_WH_Lim : Real := 90.0;   // (TODO)
+      AV_TH_Lim : Real := 85.0;   // (TODO)
+      AV_TL_Lim : Real := 15.0;   // (TODO)
+      AV_WL_Lim : Real := 10.0;   // (TODO)
+      AV_AL_Lim : Real := 5.0;   // (TODO)
+      AV_Hyst : Real := 1.0;   // (TODO)
+      AV : Real;   // Input additional analog value (TODO)
+      Feature_1 : DWord;   // (TODO)
+      Feature2 : DWord;   // (TODO) адрес - 122.0
+   END_VAR
+
+   VAR_OUTPUT 
+      MonDynErr : Bool;   // 1 = авария по обратной связи при изменении режима работы
+      MonDynStopErr : Bool;   // 1 = авария по обратной связи при остановке
+      MonStaErr : Bool;   // 1 = авария по обратной связи при остановке или запуске
+      CurrMon : Time;   // 1 = текущее время контроля обратной связи (TODO)
+      R_StpAct : Bool;   // Активен сигнал быстрого останова (TODO)
+      LockAct : Bool;   // Блокировка или Trip активна (TODO)
+      GrpErr : Bool;   // 1 = суммарная авария (TODO)
+      RdyToStart : Bool;   // Готов к запуску (TODO)
+      RdyToReset : Bool;   // Готов к сбросу аварий (TODO)
+      WarnAct : Bool;   // 1 = предпусковая сигнализация
+      Fwd : Bool;   // 1 = сигнал на запуск двигателя прямом направлении
+      Rev : Bool;   // 1 = сигнал на запуск двигателя обратном направлении
+      P_Fwd : Bool;   // 1 = импульсный сигнал на запуск в прямом направлении (TODO)
+      P_Stop : Bool := true;   // 0 = импульсный сигнал на останов (TODO)
+      P_Rev : Bool;   // 1 = импульсный сигнал на запуск в обратном направлении (TODO)
+      P_Rst : Bool;   // Сброс, активен один цикл (TODO)
+      LocalAct : Bool;   // 1 = активен местный режим
+      AutAct : Bool;   // 1 = активен автоматический режим
+      ManAct : Bool := true;   // 1 = активен ручной режим
+      OosAct : Bool;   // 1 = вывод из эксплуатации
+      DvFdAct : Bool;
+      FbkFwdOut : Bool;   // 1 = есть сигнал обратной связи
+      FbkRevOut : Bool;
+      RunFwd : Bool;   // 1= двигатель запущен
+      RunRev : Bool;
+      Stop : Bool;   // 1 = двигатель остановлен
+      Starting : Bool;
+      Stopping : Bool;
+      SP_Out : Real;
+      SP_RateTarget : Real;
+      SP_Out2 : Real;
+      SP_ExtAct : Bool;
+      SP_HiAct : Bool;   // 1 = активно верхнее ограничение задания
+      SP_LoAct : Bool;   // 1 = активно нижнее ограничение задания
+      SP_UpRaAct : Bool;   // Setpoint positive rate limit is active (TODO)
+      SP_DnRaAct : Bool;   // Setpoint negative rate limit is active (TODO)
+      RbkOut : Real;   // Readback value output (TODO)
+      RbkWH_Act : Bool;   // Rbk - Warning High Active (TODO)
+      RbkWL_Act : Bool;   // Rbk - Warning Low Active (TODO)
+      ER : Bool;   // Control error SP-Rbk (TODO)
+      ER_AH_Act : Bool;   // 1 = ER  alarm high active (TODO)
+      ER_AL_Act : Bool;   // 1 = ER  alarm low active (TODO)
+      SumMsgAct : Bool;   // Summary message, 1 = Any of the process, external or system messages is active (TODO)
+      AV_Out : Real;   // Additional analog value output (TODO)
+      AV_OpScaleHigh : Real;   // AV - Bar Display Limits for OS (TODO)
+      AV_OpScaleLow : Real;   // AV - Bar Display Limits for OS (TODO)
+      Status1 : DWord;   // (TODO)
+      Status2 : DWord;   // (TODO)
+      Status3 : DWord;   // (TODO)
+      Status4 : DWord;   // (TODO)
+      Status5 : DWord;   // (TODO)
+      ErrorNum : Int := -1;   // (TODO)
+   END_VAR
+
+   VAR 
+      Stat : Struct
+         State : "typeSM";
+         Old : Struct
+            FwdAut : Bool;
+            StopAut : Bool;
+            RevAut : Bool;
+            Fwd : Bool;
+            Rev : Bool;
+         END_STRUCT;
+         Err : Struct
+            GrpErr : Bool;
+            Trip : Bool;
+            FaultExt : Bool;
+            CSF : Bool;
+            MonDynErr : Bool;
+            MonDynStopErr : Bool;
+            MonStaErr : Bool;
+            Permit : Bool;
+            Intlock : Bool;
+            Protect : Bool;
+         END_STRUCT;
+         Fwd : Bool;
+         Rev : Bool;
+         MonTiStaticAct : Time;
+         P_Fwd_Act : Time;
+         P_Stop_Act : Time;
+         P_Rev_Act : Time;
+         FwdForce : Bool;
+         RevForce : Bool;
+      END_STRUCT;
+      Feature : DWord;
+      FeatureAt { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT Feature : Array[0..31] of Bool;
+      instOM : "PL_Aux_OperatingModes";
+      instSP : "LApl_Aux_SetpointSpecification";
+   END_VAR
+
+   VAR_TEMP 
+      tempRst : Bool;
+      tempStatus1 : DWord;
+      tempStatus1At AT tempStatus1 : Array[0..31] of Bool;
+      i : Int;
+      tbMonStaErrDiscrepancy : Bool;
+      tbFbkFwd : Bool;
+      tbFbkRev : Bool;
+   END_VAR
+
+   VAR CONSTANT 
+      ST_STOP : Int;
+      ST_FWDPREWARN : Int := 1;
+      ST_FWDSTARTING : Int := 2;
+      ST_FWDRUN : Int := 3;
+      ST_STOPPING : Int := 4;
+      ST_REVPREWARN : Int := 5;
+      ST_REVSTARTING : Int := 6;
+      ST_REVRUN : Int := 7;
+      ST_IDLE : Int := 8;
+      ST_FWDFORCESTART : Int := 9;
+      ST_REVFORCESTART : Int := 10;
+   END_VAR
+
+
+BEGIN
+	(*
+	#Feature := #Feature;
+	#CurrMon := T#0ms;
+	
+	// переключение режимов работы
+	#instOM(AutModLi := #AutModLi,
+	        LocalLi := #LocalLi,
+	        LocalSetting := #LocalSetting,
+	        ManModLi := #ManModLi,
+	        ModLiOp := #ModLiOp,
+	        OosLi := #OosLi,
+	        AutModOp := #AutModOp,
+	        LocalOp := #LocalOp,
+	        ManModOp_OnOp := #ManModOp,
+	        OosOp := #OosOp,
+	        AutAct => #AutAct,
+	        LocalAct => #LocalAct,
+	        ManAct_OnAct => #ManAct,
+	        OosAct => #OosAct);
+	
+	// определение уставки
+	#instSP(SP_LiOp := #SP_LiOp,
+	        SP_IntLi := #SP_IntLi,
+	        SP_ExtLi := #SP_ExtLi,
+	        SP_Ext := #SP_Ext,
+	        SP_TrkExt := #SP_TrkExt,
+	        SP => #SP_Out,
+	        SP_IntOp := #SP_IntOp,
+	        SP_ExtOp := #SP_ExtOp,
+	        SP_Int := #SP_Int);
+	
+	// верхнее ограничение задания
+	if #SP_Out >= #SP_HiLim then
+	    #SP_Out := #SP_HiLim;
+	    #SP_HiAct := true;
+	else
+	    #SP_HiAct := false;
+	end_if;
+	
+	// нижнее ограничение задания
+	if #SP_Out <= #SP_LoLim then
+	    #SP_Out := #SP_LoLim;
+	    #SP_LoAct := true;
+	else
+	    #SP_LoAct := false;
+	end_if;
+	
+	// блокировки
+	if #instOM.AutAct or #instOM.ManAct_OnAct then
+	    #Stat.Err.Permit := not #Permit and #Perm_en and "SM_StateE"(state := #ST_STOP, inst := #Stat.State);
+	    #Stat.Err.Intlock := not #Intlock and #Intl_en;
+	    if not #Protect and #Prot_en then
+	        #Stat.Err.Protect := true;
+	    end_if;
+	elsif #instOM.LocalAct then
+	    if (#LocalSetting = 1 or #LocalSetting = 3) then
+	        #Stat.Err.Permit := not #Permit and #Perm_en and not #BypProt and "SM_StateE"(state := #ST_STOP, inst := #Stat.State);
+	        #Stat.Err.Intlock := not #Intlock and #Intl_en and not #BypProt;
+	        if not #Protect and #Prot_en and not #BypProt then
+	            #Stat.Err.Protect := true;
+	        end_if;
+	    elsif (#LocalSetting = 2 or #LocalSetting = 4 or #LocalSetting = 5) then
+	        #Stat.Err.Permit := false;
+	        #Stat.Err.Intlock := false;
+	        #Stat.Err.Protect := false;
+	    end_if;
+	elsif #instOM.OosAct then
+	    #Stat.Err.Permit := false;
+	    #Stat.Err.Intlock := false;
+	end_if;
+	
+	// обратная связь
+	#tbFbkFwd := (#Monitor and #FbkFwd) or (not #Monitor and #Fwd);
+	#tbFbkRev := (#Monitor and #FbkRev) or (not #Monitor and #Rev);
+	
+	// аварии
+	// Trip
+	if not #Trip then
+	    #Stat.Err.Trip := true;
+	end_if;
+	// FaultExt
+	if #FaultExt then
+	    #Stat.Err.FaultExt := true;
+	end_if;
+	// CSF
+	if #CSF and #FeatureAt[18] then
+	    #Stat.Err.CSF := true;
+	end_if;
+	// MonStaErr
+	#tbMonStaErrDiscrepancy := 
+	((#tbFbkFwd or #tbFbkRev) and ("SM_StateE"(state := #ST_STOP, inst := #Stat.State) or "SM_StateE"(state := #ST_STOPPING, inst := #Stat.State)))
+	or ((not #tbFbkFwd or #tbFbkRev) and ("SM_StateE"(state := #ST_FWDSTARTING, inst := #Stat.State) or "SM_StateE"(state := #ST_FWDRUN, inst := #Stat.State)))
+	or ((not #tbFbkRev or #tbFbkFwd) and ("SM_StateE"(state := #ST_REVSTARTING, inst := #Stat.State) or "SM_StateE"(state := #ST_REVRUN, inst := #Stat.State)));
+	if #tbMonStaErrDiscrepancy then
+	    #Stat.MonTiStaticAct := #Stat.MonTiStaticAct + #SampleTime;
+	    #CurrMon := #MonTiStatic - #Stat.MonTiStaticAct;
+	else
+	    #Stat.MonTiStaticAct := T#0ms;
+	end_if;
+	if #Stat.MonTiStaticAct >= #MonTiStatic then
+	    #Stat.Err.MonStaErr := true;
+	end_if;
+	// GrpErr
+	#Stat.Err.GrpErr := #Stat.Err.Trip or #Stat.Err.MonDynErr or #Stat.Err.MonDynStopErr or #Stat.Err.MonStaErr
+	or #Stat.Err.Protect or #Stat.Err.FaultExt or #Stat.Err.CSF;
+	
+	// сброс аварий
+	#tempRst := false;
+	if #instOM.AutAct then
+	    // автоматический режим
+	    if not #FeatureAt[9] and not #FeatureAt[30] then
+	        #tempRst := #RstLi or #RstOp;
+	    elsif #FeatureAt[9] and not #FeatureAt[30] then
+	        #tempRst := #RstLi or #RstOp or (#FwdAut and not #Stat.Old.FwdAut) or (#StopAut and not #Stat.Old.StopAut);
+	    elsif not #FeatureAt[9] and #FeatureAt[30] then
+	        #tempRst := #RstLi;
+	    elsif #FeatureAt[9] and #FeatureAt[30] then
+	        #tempRst := #RstLi or (#FwdAut and not #Stat.Old.FwdAut) or (#StopAut and not #Stat.Old.StopAut);
+	    end_if;
+	elsif #instOM.LocalAct then
+	    // местный режим
+	    if #LocalSetting = 1 or #LocalSetting = 3 then
+	        #tempRst := #StopLocal;
+	    elsif #LocalSetting = 2 or #LocalSetting = 4 then
+	        #tempRst := true;
+	    end_if;
+	elsif #instOM.ManAct_OnAct then
+	    // ручной режим
+	    if not #FeatureAt[30] and not #FeatureAt[31] then
+	        #tempRst := true;
+	    elsif #FeatureAt[30] and not #FeatureAt[31] then
+	        #tempRst := true;
+	    elsif not #FeatureAt[30] and #FeatureAt[31] then
+	        #tempRst := #RstLi or #RstOp;
+	    elsif #FeatureAt[30] and #FeatureAt[31] then
+	        #tempRst := #RstOp;
+	    end_if;
+	elsif #instOM.OosAct then
+	    // вывод из эксплуатации
+	    #tempRst := true;
+	end_if;
+	if #tempRst then
+	    #Stat.Err.Trip := not #Trip;
+	    #Stat.Err.FaultExt := #FaultExt;
+	    #Stat.Err.CSF := #CSF and #FeatureAt[18];
+	    #Stat.Err.MonDynErr := false;
+	    #Stat.Err.MonDynStopErr := false;
+	    #Stat.Err.MonStaErr := #tbMonStaErrDiscrepancy;
+	    #Stat.Err.Protect := not #Protect or not #Prot_en;
+	end_if;
+	
+	// команда на запуск в зависимости от режима работы
+	if #instOM.AutAct then
+	    // автоматический режим
+	    #Stat.Fwd := (#Stat.Fwd or #FwdAut) and not #StopAut and not #Stat.Rev;
+	    #Stat.Rev := (#Stat.Rev or #RevAut) and not #StopAut and not #Stat.Fwd;
+	    if #Stat.Err.Permit or #Stat.Err.Intlock or #Stat.Err.Protect then
+	        #Stat.Fwd := false;
+	        #Stat.Rev := false;
+	    end_if;
+	elsif #instOM.ManAct_OnAct then
+	    // ручной режим
+	    #Stat.Fwd := (#Stat.Fwd or #FwdMan) and not #StopMan and not #Stat.Rev;
+	    #Stat.Rev := (#Stat.Rev or #RevMan) and not #StopMan and not #Stat.Fwd;
+	    if #Stat.Err.Permit or #Stat.Err.Intlock or #Stat.Err.Protect then
+	        #Stat.Fwd := false;
+	        #Stat.Rev := false;
+	    end_if;
+	elsif #instOM.LocalAct then
+	    // местный режим
+	    if #LocalSetting = 1 or #LocalSetting = 3 then
+	        #Stat.Fwd := (#Stat.Fwd or #FwdLocal) and not #StopLocal and not #Stat.Rev;
+	        #Stat.Rev := (#Stat.Rev or #RevLocal) and not #StopLocal and not #Stat.Fwd;
+	        if (#Stat.Err.Permit or #Stat.Err.Intlock or #Stat.Err.Protect) and not #BypProt then
+	            #Stat.Fwd := false;
+	            #Stat.Rev := false;
+	        end_if;
+	    elsif #LocalSetting = 2 or #LocalSetting = 4 then
+	        #Stat.Fwd := #tbFbkFwd;
+	        #Stat.Rev := #tbFbkRev;
+	    end_if;
+	elsif #instOM.OosAct then
+	    // вывод из эксплуатации
+	    #Stat.Fwd := false;
+	    #Stat.Rev := false;
+	end_if;
+	// принудительный останов
+	if #StopForce then
+	    #Stat.Fwd := false;
+	    #Stat.Rev := false;
+	end_if;
+	// принудительный запуск
+	#Stat.FwdForce := #FwdForce and (#instOM.AutAct or #instOM.ManAct_OnAct) and not #Stat.RevForce;
+	#Stat.RevForce := #RevForce and (#instOM.AutAct or #instOM.ManAct_OnAct) and not #Stat.FwdForce;
+	// останов по аварии
+	if #Stat.Err.Trip or #Stat.Err.FaultExt or #Stat.Err.CSF or #Stat.Err.MonStaErr or #Stat.Err.MonDynErr then
+	    #Stat.Fwd := false;
+	    #Stat.Rev := false;
+	end_if;
+	
+	
+	// состояние оборудования
+	case "SM_Case"(sampleTime := #SampleTime, inst := #Stat.State) of
+	    #ST_STOP:
+	        if #Stat.FwdForce then
+	            // прямой принудительный пуск
+	            if #instOM.AutAct then
+	                // в автоматическом режиме
+	                "SM_NewState"(newState := #ST_FWDFORCESTART,
+	                              inst := #Stat.State);
+	            elsif #instOM.ManAct_OnAct then
+	                // в ручном режиме
+	                "SM_NewState"(newState := #ST_FWDPREWARN,
+	                              inst := #Stat.State);
+	            end_if;
+	        elsif #Stat.RevForce then
+	            // реверсивный принудительный пуск
+	            if #instOM.AutAct then
+	                // в автоматическом режиме
+	                "SM_NewState"(newState := #ST_REVFORCESTART,
+	                              inst := #Stat.State);
+	            elsif #instOM.ManAct_OnAct then
+	                // в ручном режиме
+	                "SM_NewState"(newState := #ST_REVPREWARN,
+	                              inst := #Stat.State);
+	            end_if;
+	        elsif #instOM.AutAct or #instOM.ManAct_OnAct then
+	            // автоматический или ручной режим
+	            if #Stat.Fwd then
+	                // предпусковая сигнализация перед прямым пуском
+	                "SM_NewState"(newState := #ST_FWDPREWARN,
+	                              inst := #Stat.State);
+	            elsif #Stat.Rev then
+	                // предпусковая сигнализация перед реверсивным пуском
+	                "SM_NewState"(newState := #ST_REVPREWARN,
+	                              inst := #Stat.State);
+	            end_if;
+	        elsif #instOM.LocalAct then
+	            // местный режим
+	            if #Stat.Fwd then
+	                // прямой пуск
+	                if (#LocalSetting = 1 or #LocalSetting = 3) then
+	                    // с управляющими командами
+	                    "SM_NewState"(newState := #ST_FWDSTARTING,
+	                                  inst := #Stat.State);
+	                elsif (#LocalSetting = 2 or #LocalSetting = 4) and #tbFbkFwd then
+	                    // без управляющих команд
+	                    "SM_NewState"(newState := #ST_FWDRUN,
+	                                  inst := #Stat.State);
+	                end_if;
+	            elsif #Stat.Rev then
+	                // реверсивный пуск
+	                if (#LocalSetting = 1 or #LocalSetting = 3) then
+	                    // с управляющими командами
+	                    "SM_NewState"(newState := #ST_REVSTARTING,
+	                                  inst := #Stat.State);
+	                elsif (#LocalSetting = 2 or #LocalSetting = 4) and #tbFbkRev then
+	                    // без управляющих команд
+	                    "SM_NewState"(newState := #ST_REVRUN,
+	                                  inst := #Stat.State);
+	                end_if;
+	            end_if;
+	        end_if;
+	        
+	    #ST_FWDPREWARN:
+	        if #Stat.FwdForce and ("SM_TimeGE"(value := #WarnTiMan, inst := #Stat.State) or #instOM.AutAct) then
+	            // прямой принудительный запуск
+	            "SM_NewState"(newState := #ST_FWDFORCESTART,
+	                          inst := #Stat.State);
+	        elsif (#instOM.AutAct and "SM_TimeGE"(value := #WarnTiAut, inst := #Stat.State)) or
+	            (#instOM.ManAct_OnAct and "SM_TimeGE"(value := #WarnTiMan, inst := #Stat.State)) or
+	            #instOM.LocalAct then
+	            // прямой запуск
+	            "SM_NewState"(newState := #ST_FWDSTARTING,
+	                          inst := #Stat.State);
+	        elsif not #Stat.Fwd or #Stat.RevForce then
+	            // останов
+	            "SM_NewState"(newState := #ST_STOPPING,
+	                          inst := #Stat.State);
+	        end_if;
+	        
+	    #ST_FWDSTARTING:
+	        if #Stat.FwdForce then
+	            // прямой принудительный запуск
+	            "SM_NewState"(newState := #ST_FWDFORCESTART,
+	                          inst := #Stat.State);
+	        elsif #Stat.RevForce then
+	            // реверсивный принудительный запуск
+	            "SM_NewState"(newState := #ST_REVFORCESTART,
+	                          inst := #Stat.State);
+	        elsif #tbFbkFwd then
+	            // есть обратная связь
+	            "SM_NewState"(newState := #ST_FWDRUN,
+	                          inst := #Stat.State);
+	        elsif #Monitor and "SM_TimeGE"(value := #MonTiDynamic, inst := #Stat.State) then
+	            // авария по обратной связи
+	            #Stat.Err.MonDynErr := true;
+	        elsif not #Stat.Fwd then
+	            // останов
+	            "SM_NewState"(newState := #ST_STOPPING,
+	                          inst := #Stat.State);
+	        end_if;
+	        
+	        #CurrMon := #MonTiDynamic - "SM_GetStateTime"(#Stat.State);
+	        
+	    #ST_FWDRUN:
+	        if #Stat.FwdForce then
+	            // прямой принудительный запуск
+	            "SM_NewState"(newState := #ST_FWDFORCESTART,
+	                          inst := #Stat.State);
+	        elsif #Stat.RevForce then
+	            // реверсивный принудительный запуск
+	            "SM_NewState"(newState := #ST_REVFORCESTART,
+	                          inst := #Stat.State);
+	        elsif #instOM.LocalAct and (#LocalSetting = 2 or #LocalSetting = 4) and not #tbFbkFwd then
+	            // останов в ручном режиме без управляющих команд
+	            "SM_NewState"(newState := #ST_STOP,
+	                          inst := #Stat.State);
+	        elsif not #Stat.Fwd then
+	            // останов
+	            "SM_NewState"(newState := #ST_STOPPING,
+	                          inst := #Stat.State);
+	        end_if;
+	        
+	    #ST_STOPPING:
+	        if #Stat.FwdForce then
+	            // прямой принудительный запуск
+	            "SM_NewState"(newState := #ST_FWDFORCESTART,
+	                          inst := #Stat.State);
+	        elsif #Stat.RevForce then
+	            // реверсивный принудительный запуск
+	            "SM_NewState"(newState := #ST_REVFORCESTART,
+	                          inst := #Stat.State);
+	        elsif not #Monitor or (#Monitor and not #tbFbkFwd and not #tbFbkRev) then
+	            // нет обратной связи
+	            "SM_NewState"(newState := #ST_IDLE,
+	                          inst := #Stat.State);
+	        elsif #Monitor and "SM_TimeGE"(value := #MonTiDynamic, inst := #Stat.State) then
+	            // авария по обратной связи
+	            #Stat.Err.MonDynErr := true;
+	        end_if;
+	        
+	        #CurrMon := #MonTiDynamic - "SM_GetStateTime"(#Stat.State);
+	        
+	    #ST_REVPREWARN:
+	        if #Stat.RevForce and ("SM_TimeGE"(value := #WarnTiMan, inst := #Stat.State) or #instOM.AutAct) then
+	            // прямой принудительный запуск
+	            "SM_NewState"(newState := #ST_REVFORCESTART,
+	                          inst := #Stat.State);
+	        elsif (#instOM.AutAct and "SM_TimeGE"(value := #WarnTiAut, inst := #Stat.State)) or
+	            (#instOM.ManAct_OnAct and "SM_TimeGE"(value := #WarnTiMan, inst := #Stat.State)) or
+	            #instOM.LocalAct then
+	            // прямой запуск
+	            "SM_NewState"(newState := #ST_REVSTARTING,
+	                          inst := #Stat.State);
+	        elsif not #Stat.Rev or #Stat.FwdForce then
+	            // останов
+	            "SM_NewState"(newState := #ST_STOPPING,
+	                          inst := #Stat.State);
+	        end_if;
+	            
+	    #ST_REVSTARTING:
+	            if #Stat.FwdForce then
+	                // прямой принудительный запуск
+	                "SM_NewState"(newState := #ST_FWDFORCESTART,
+	                              inst := #Stat.State);
+	            elsif #Stat.RevForce then
+	                // реверсивный принудительный запуск
+	                "SM_NewState"(newState := #ST_REVFORCESTART,
+	                              inst := #Stat.State);
+	            elsif #tbFbkRev then
+	                // есть обратная связь
+	                "SM_NewState"(newState := #ST_REVRUN,
+	                              inst := #Stat.State);
+	            elsif #Monitor and "SM_TimeGE"(value := #MonTiDynamic, inst := #Stat.State) then
+	                // авария по обратной связи
+	                #Stat.Err.MonDynErr := true;
+	            elsif not #Stat.Rev then
+	                // останов
+	                "SM_NewState"(newState := #ST_STOPPING,
+	                              inst := #Stat.State);
+	            end_if;
+	            
+	            #CurrMon := #MonTiDynamic - "SM_GetStateTime"(#Stat.State);
+	            
+	        #ST_REVRUN:
+	            if #Stat.FwdForce then
+	                // прямой принудительный запуск
+	                "SM_NewState"(newState := #ST_FWDFORCESTART,
+	                              inst := #Stat.State);
+	            elsif #Stat.RevForce then
+	                // реверсивный принудительный запуск
+	                "SM_NewState"(newState := #ST_REVFORCESTART,
+	                              inst := #Stat.State);
+	            elsif #instOM.LocalAct and (#LocalSetting = 2 or #LocalSetting = 4) and not #tbFbkRev then
+	                // останов в ручном режиме без управляющих команд
+	                "SM_NewState"(newState := #ST_STOP,
+	                              inst := #Stat.State);
+	            elsif not #Stat.Rev then
+	                // останов
+	                "SM_NewState"(newState := #ST_STOPPING,
+	                              inst := #Stat.State);
+	            end_if;
+	        
+	    #ST_IDLE:
+	        if "SM_TimeGE"(value := #IdleTime, inst := #Stat.State) then
+	            "SM_NewState"(newState := #ST_STOP,
+	                          inst := #Stat.State);
+	        end_if;
+	        
+	    #ST_FWDFORCESTART:
+	        if not #Stat.FwdForce then
+	            "SM_NewState"(newState := #ST_STOP,
+	                          inst := #Stat.State);
+	        end_if;
+	        
+	    #ST_REVFORCESTART:
+	        if not #Stat.RevForce then
+	            "SM_NewState"(newState := #ST_STOP,
+	                          inst := #Stat.State);
+	        end_if;
+	        
+	    else
+	        "SM_NewState"(newState := #ST_STOP,
+	                      inst := #Stat.State);
+	        
+	end_case;
+	
+	// запись выходов
+	#MonDynErr := #Stat.Err.MonDynErr;
+	#MonDynStopErr := #Stat.Err.MonDynStopErr;
+	#MonStaErr := #Stat.Err.MonStaErr;
+	#R_StpAct := false;
+	#LockAct := #Stat.Err.Permit or #Stat.Err.Intlock or #Stat.Err.Protect or #Stat.Err.Trip;
+	#GrpErr := #Stat.Err.MonDynErr or #Stat.Err.MonDynStopErr or #Stat.Err.MonStaErr or #CSF or #FaultExt or not #Trip;
+	#RdyToStart := not (#Stat.Err.MonDynErr or #Stat.Err.MonDynStopErr or #Stat.Err.MonStaErr or (#CSF and #FeatureAt[18]) or #FaultExt or not #Trip)
+	and "SM_StateE"(state := #ST_STOP, inst := #Stat.State) and #instOM.AutAct and not #StopForce and not #LockAct and not #R_StpAct;
+	#WarnAct := "SM_StateE"(state := #ST_FWDPREWARN, inst := #Stat.State);
+	#Fwd := "SM_StateE"(state := #ST_FWDSTARTING, inst := #Stat.State)
+	or "SM_StateE"(state := #ST_FWDRUN, inst := #Stat.State)
+	or "SM_StateE"(state := #ST_FWDFORCESTART, inst := #Stat.State);
+	#Rev := "SM_StateE"(state := #ST_REVSTARTING, inst := #Stat.State)
+	or "SM_StateE"(state := #ST_REVRUN, inst := #Stat.State)
+	or "SM_StateE"(state := #ST_REVFORCESTART, inst := #Stat.State);
+	if #Fwd and not #Stat.Old.Fwd then
+	    #Stat.P_Fwd_Act := #PulseWidth;
+	elsif not #Fwd and #Stat.Old.Fwd then
+	    #Stat.P_Stop_Act := #PulseWidth;
+	end_if;
+	#P_Fwd := #Stat.P_Fwd_Act > 0 and #Fwd;
+	#P_Stop := not (#Stat.P_Stop_Act > 0 and not #Fwd);
+	#FbkFwdOut := #tbFbkFwd;
+	#FbkRevOut := #tbFbkRev;
+	#RunFwd := "SM_StateE"(state := #ST_FWDRUN, inst := #Stat.State);
+	#RunRev := "SM_StateE"(state := #ST_REVRUN, inst := #Stat.State);
+	#Stop := "SM_StateE"(state := #ST_STOP, inst := #Stat.State) or "SM_StateE"(state := #ST_IDLE, inst := #Stat.State);
+	#Starting := "SM_StateE"(state := #ST_FWDSTARTING, inst := #Stat.State) or "SM_StateE"(state := #ST_REVSTARTING, inst := #Stat.State);
+	#Stopping := "SM_StateE"(state := #ST_STOPPING, inst := #Stat.State);
+	
+	// Status1
+	for #i := 0 to 31 do
+	    #tempStatus1At[#i] := false;
+	end_for;
+	#tempStatus1At[19] := #Stat.Err.Trip;
+	#Status1 := #tempStatus1;
+	
+	// сбрасываем команды из HMI
+	#FwdMan := false;
+	#StopMan := false;
+	#RevMan := false;
+	#RstOp := false;
+	
+	// для следующего цикла
+	#Stat.Old.FwdAut := #FwdAut;
+	#Stat.Old.StopAut := #StopAut;
+	#Stat.Old.Fwd := #Fwd;
+	if #Stat.P_Fwd_Act > 0 then
+	    #Stat.P_Fwd_Act := #Stat.P_Fwd_Act - #SampleTime;
+	end_if;
+	if #Stat.P_Stop_Act > 0 then
+	    #Stat.P_Stop_Act := #Stat.P_Stop_Act - #SampleTime;
+	end_if;
+ automatically inserted *)
+END_FUNCTION_BLOCK
+

@@ -1,0 +1,263 @@
+﻿FUNCTION "PL_SelST16" : Byte
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      InST : "udtSelST16";   // Input 0..15 Signal Status
+      Num : Int;   // No of inputs considered for Signal Status
+      SelPrio : Int;   // Table of priority specification 0..6
+   END_VAR
+
+   VAR_TEMP 
+      InST_array : Array[0..15] of Byte;
+      i : Int;
+      find : Struct
+         badDev : Bool;
+         badProc : Bool;
+         sim : Bool;
+         uncDev : Bool;
+         uncProc : Bool;
+         good : Bool;
+         maint : Bool;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	IF #Num < 1 OR #Num > 16 THEN
+	    #PL_SelST16 := "PL".QC.badDev;
+	    RETURN;
+	END_IF;
+	
+	#InST_array[0] := "PL_DigQC"(#InST.b0);
+	#InST_array[1] := "PL_DigQC"(#InST.b1);
+	#InST_array[2] := "PL_DigQC"(#InST.b2);
+	#InST_array[3] := "PL_DigQC"(#InST.b3);
+	#InST_array[4] := "PL_DigQC"(#InST.b4);
+	#InST_array[5] := "PL_DigQC"(#InST.b5);
+	#InST_array[6] := "PL_DigQC"(#InST.b6);
+	#InST_array[7] := "PL_DigQC"(#InST.b7);
+	#InST_array[8] := "PL_DigQC"(#InST.b8);
+	#InST_array[9] := "PL_DigQC"(#InST.b9);
+	#InST_array[10] := "PL_DigQC"(#InST.b10);
+	#InST_array[11] := "PL_DigQC"(#InST.b11);
+	#InST_array[12] := "PL_DigQC"(#InST.b12);
+	#InST_array[13] := "PL_DigQC"(#InST.b13);
+	#InST_array[14] := "PL_DigQC"(#InST.b14);
+	#InST_array[15] := "PL_DigQC"(#InST.b15);
+	
+	#find.badDev := false;
+	#find.badProc := false;
+	#find.sim := false;
+	#find.uncDev := false;
+	#find.uncProc := false;
+	#find.good := false;
+	#find.maint := false;
+	FOR #i := 0 TO #Num - 1 DO
+	    IF #InST_array[#i] = "PL".QC.badDev THEN
+	        #find.badDev := true;
+	    ELSIF #InST_array[#i] = "PL".QC.badProc THEN
+	        #find.badProc := true;
+	    ELSIF #InST_array[#i] = "PL".QC.sim THEN
+	        #find.sim := true;
+	    ELSIF #InST_array[#i] = "PL".QC.uncDev THEN
+	        #find.uncDev := true;
+	    ELSIF #InST_array[#i] = "PL".QC.uncProc THEN
+	        #find.uncProc := true;
+	    ELSIF #InST_array[#i] = "PL".QC.good THEN
+	        #find.good := true;
+	    ELSIF #InST_array[#i] = "PL".QC.maint THEN
+	        #find.maint := true;
+	    END_IF;
+	END_FOR;
+	
+	CASE #SelPrio OF
+	    0:
+	        IF #find.sim THEN          // 0
+	            #PL_SelST16 := "PL".QC.sim;
+	            RETURN;
+	        ELSIF #find.badDev THEN       // 1
+	            #PL_SelST16 := "PL".QC.badDev;
+	            RETURN;
+	        ELSIF #find.badProc THEN       // 2
+	            #PL_SelST16 := "PL".QC.badProc;
+	            RETURN;
+	        ELSIF #find.uncDev THEN       // 3
+	            #PL_SelST16 := "PL".QC.uncDev;
+	            RETURN;
+	        ELSIF #find.uncProc THEN       // 4
+	            #PL_SelST16 := "PL".QC.uncProc;
+	            RETURN;
+	        ELSIF #find.maint THEN       // 5
+	            #PL_SelST16 := "PL".QC.maint;
+	            RETURN;
+	        ELSIF #find.good THEN       // 6
+	            #PL_SelST16 := "PL".QC.good;
+	            RETURN;
+	        END_IF;
+	    1:
+	        IF #find.good THEN          // 0
+	            #PL_SelST16 := "PL".QC.good;
+	            RETURN;
+	        ELSIF #find.badDev THEN       // 1
+	            #PL_SelST16 := "PL".QC.badDev;
+	            RETURN;
+	        ELSIF #find.badProc THEN       // 2
+	            #PL_SelST16 := "PL".QC.badProc;
+	            RETURN;
+	        ELSIF #find.uncDev THEN       // 3
+	            #PL_SelST16 := "PL".QC.uncDev;
+	            RETURN;
+	        ELSIF #find.uncProc THEN       // 4
+	            #PL_SelST16 := "PL".QC.uncProc;
+	            RETURN;
+	        ELSIF #find.sim THEN       // 5
+	            #PL_SelST16 := "PL".QC.sim;
+	            RETURN;
+	        ELSIF #find.maint THEN       // 6
+	            #PL_SelST16 := "PL".QC.maint;
+	            RETURN;
+	        END_IF;
+	    2:
+	        IF #find.maint THEN          // 0
+	            #PL_SelST16 := "PL".QC.maint;
+	            RETURN;
+	        ELSIF #find.badDev THEN       // 1
+	            #PL_SelST16 := "PL".QC.badDev;
+	            RETURN;
+	        ELSIF #find.badProc THEN       // 2
+	            #PL_SelST16 := "PL".QC.badProc;
+	            RETURN;
+	        ELSIF #find.uncDev THEN       // 3
+	            #PL_SelST16 := "PL".QC.uncDev;
+	            RETURN;
+	        ELSIF #find.uncProc THEN       // 4
+	            #PL_SelST16 := "PL".QC.uncProc;
+	            RETURN;
+	        ELSIF #find.sim THEN       // 5
+	            #PL_SelST16 := "PL".QC.sim;
+	            RETURN;
+	        ELSIF #find.good THEN       // 6
+	            #PL_SelST16 := "PL".QC.good;
+	            RETURN;
+	        END_IF;
+	    3:
+	        IF #find.good THEN          // 0
+	            #PL_SelST16 := "PL".QC.good;
+	            RETURN;
+	        ELSIF #find.maint THEN       // 1
+	            #PL_SelST16 := "PL".QC.maint;
+	            RETURN;
+	        ELSIF #find.sim THEN       // 2
+	            #PL_SelST16 := "PL".QC.sim;
+	            RETURN;
+	        ELSIF #find.badDev THEN       // 3
+	            #PL_SelST16 := "PL".QC.badDev;
+	            RETURN;
+	        ELSIF #find.badProc THEN       // 4
+	            #PL_SelST16 := "PL".QC.badProc;
+	            RETURN;
+	        ELSIF #find.uncDev THEN       // 5
+	            #PL_SelST16 := "PL".QC.uncDev;
+	            RETURN;
+	        ELSIF #find.uncProc THEN       // 6
+	            #PL_SelST16 := "PL".QC.uncProc;
+	            RETURN;
+	        END_IF;
+	    4:
+	        IF #find.maint THEN          // 0
+	            #PL_SelST16 := "PL".QC.maint;
+	            RETURN;
+	        ELSIF #find.good THEN       // 1
+	            #PL_SelST16 := "PL".QC.good;
+	            RETURN;
+	        ELSIF #find.sim THEN       // 2
+	            #PL_SelST16 := "PL".QC.sim;
+	            RETURN;
+	        ELSIF #find.badDev THEN       // 3
+	            #PL_SelST16 := "PL".QC.badDev;
+	            RETURN;
+	        ELSIF #find.badProc THEN       // 4
+	            #PL_SelST16 := "PL".QC.badProc;
+	            RETURN;
+	        ELSIF #find.uncDev THEN       // 5
+	            #PL_SelST16 := "PL".QC.uncDev;
+	            RETURN;
+	        ELSIF #find.uncProc THEN       // 6
+	            #PL_SelST16 := "PL".QC.uncProc;
+	            RETURN;
+	        END_IF;
+	    5:
+	        IF #find.sim THEN          // 0
+	            #PL_SelST16 := "PL".QC.sim;
+	            RETURN;
+	        ELSIF #find.good THEN       // 1
+	            #PL_SelST16 := "PL".QC.good;
+	            RETURN;
+	        ELSIF #find.maint THEN       // 2
+	            #PL_SelST16 := "PL".QC.maint;
+	            RETURN;
+	        ELSIF #find.badDev THEN       // 3
+	            #PL_SelST16 := "PL".QC.badDev;
+	            RETURN;
+	        ELSIF #find.badProc THEN       // 4
+	            #PL_SelST16 := "PL".QC.badProc;
+	            RETURN;
+	        ELSIF #find.uncDev THEN       // 5
+	            #PL_SelST16 := "PL".QC.uncDev;
+	            RETURN;
+	        ELSIF #find.uncProc THEN       // 6
+	            #PL_SelST16 := "PL".QC.uncProc;
+	            RETURN;
+	        END_IF;
+	    6:
+	        IF #find.good THEN          // 0
+	            #PL_SelST16 := "PL".QC.good;
+	            RETURN;
+	        ELSIF #find.maint THEN       // 1
+	            #PL_SelST16 := "PL".QC.maint;
+	            RETURN;
+	        ELSIF #find.uncProc THEN       // 2
+	            #PL_SelST16 := "PL".QC.uncProc;
+	            RETURN;
+	        ELSIF #find.uncDev THEN       // 3
+	            #PL_SelST16 := "PL".QC.uncDev;
+	            RETURN;
+	        ELSIF #find.badProc THEN       // 4
+	            #PL_SelST16 := "PL".QC.badProc;
+	            RETURN;
+	        ELSIF #find.badDev THEN       // 5
+	            #PL_SelST16 := "PL".QC.badDev;
+	            RETURN;
+	        ELSIF #find.sim THEN       // 6
+	            #PL_SelST16 := "PL".QC.sim;
+	            RETURN;
+	        END_IF;
+	    7:
+	        IF #find.sim THEN          // 0
+	            #PL_SelST16 := "PL".QC.sim;
+	            RETURN;
+	        ELSIF #find.good THEN       // 1
+	            #PL_SelST16 := "PL".QC.good;
+	            RETURN;
+	        ELSIF #find.maint THEN       // 2
+	            #PL_SelST16 := "PL".QC.maint;
+	            RETURN;
+	        ELSIF #find.uncProc THEN       // 3
+	            #PL_SelST16 := "PL".QC.uncProc;
+	            RETURN;
+	        ELSIF #find.uncDev THEN       // 4
+	            #PL_SelST16 := "PL".QC.uncDev;
+	            RETURN;
+	        ELSIF #find.badProc THEN       // 5
+	            #PL_SelST16 := "PL".QC.badProc;
+	            RETURN;
+	        ELSIF #find.badDev THEN       // 6
+	            #PL_SelST16 := "PL".QC.badDev;
+	            RETURN;
+	        END_IF;
+	END_CASE;
+	
+	
+	#PL_SelST16 := "PL".QC.badDev;
+END_FUNCTION
+

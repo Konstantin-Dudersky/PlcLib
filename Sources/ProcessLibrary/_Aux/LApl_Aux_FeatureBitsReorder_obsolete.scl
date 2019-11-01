@@ -1,0 +1,63 @@
+﻿FUNCTION_BLOCK "LApl_Aux_FeatureBitsReorder_obsolete"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      FeatureIn : DWord;
+      FeatureInAt { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT FeatureIn : Array[0..31] of Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      Feature : DWord;
+      Bit : Array[0..31] of Bool;
+   END_VAR
+
+   VAR_TEMP 
+      tempFeature : DWord;
+      tempFeatureAt AT tempFeature : Array[0..31] of Bool;
+      i : Int;
+   END_VAR
+
+
+BEGIN
+	#tempFeatureAt[0] := #FeatureInAt[7];
+	#tempFeatureAt[1] := #FeatureInAt[6];
+	#tempFeatureAt[2] := #FeatureInAt[5];
+	#tempFeatureAt[3] := #FeatureInAt[4];
+	#tempFeatureAt[4] := #FeatureInAt[3];
+	#tempFeatureAt[5] := #FeatureInAt[2];
+	#tempFeatureAt[6] := #FeatureInAt[1];
+	#tempFeatureAt[7] := #FeatureInAt[0];
+	
+	#tempFeatureAt[8] := #FeatureInAt[15];
+	#tempFeatureAt[9] := #FeatureInAt[14];
+	#tempFeatureAt[10] := #FeatureInAt[13];
+	#tempFeatureAt[11] := #FeatureInAt[12];
+	#tempFeatureAt[12] := #FeatureInAt[11];
+	#tempFeatureAt[13] := #FeatureInAt[10];
+	#tempFeatureAt[14] := #FeatureInAt[9];
+	#tempFeatureAt[15] := #FeatureInAt[8];
+	
+	#tempFeatureAt[16] := #FeatureInAt[23];
+	#tempFeatureAt[17] := #FeatureInAt[22];
+	#tempFeatureAt[18] := #FeatureInAt[21];
+	#tempFeatureAt[19] := #FeatureInAt[20];
+	#tempFeatureAt[20] := #FeatureInAt[19];
+	#tempFeatureAt[21] := #FeatureInAt[18];
+	#tempFeatureAt[22] := #FeatureInAt[17];
+	#tempFeatureAt[23] := #FeatureInAt[16];
+	
+	#tempFeatureAt[24] := #FeatureInAt[31];
+	#tempFeatureAt[25] := #FeatureInAt[30];
+	#tempFeatureAt[26] := #FeatureInAt[29];
+	#tempFeatureAt[27] := #FeatureInAt[28];
+	#tempFeatureAt[28] := #FeatureInAt[27];
+	#tempFeatureAt[29] := #FeatureInAt[26];
+	#tempFeatureAt[30] := #FeatureInAt[25];
+	#tempFeatureAt[31] := #FeatureInAt[24];
+	
+	FOR #i := 0 TO 31 DO
+	    #Bit[#i] := #tempFeatureAt[#i];
+	END_FOR;
+	#Feature := #tempFeature;
+END_FUNCTION_BLOCK
+

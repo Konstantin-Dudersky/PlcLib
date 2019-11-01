@@ -1,0 +1,13 @@
+﻿DATA_BLOCK "MsgConst"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   STRUCT 
+      nullMsg : "DG_udtMsg";
+      nullMsgSum : "DG_udtMsgSum";
+   END_STRUCT;
+
+
+BEGIN
+
+END_DATA_BLOCK
+

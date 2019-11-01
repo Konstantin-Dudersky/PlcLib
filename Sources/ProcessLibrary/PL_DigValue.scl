@@ -1,0 +1,12 @@
+﻿FUNCTION "PL_DigValue" : Bool
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      In : Byte;
+   END_VAR
+
+
+BEGIN
+	#PL_DigValue := #In.%X7;
+END_FUNCTION
+

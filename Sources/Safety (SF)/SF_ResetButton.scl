@@ -1,0 +1,103 @@
+﻿FUNCTION_BLOCK "SF_ResetButton"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      ResetRequested { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := true;
+      ResetIn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      TrailingMinimum { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time := T#350ms;
+      TrailingMaximum { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time := T#2s;
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      ResetOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         prev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+            ResetIn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+         END_STRUCT;
+      END_STRUCT;
+      SM { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SM_StateMachine";
+   END_VAR
+
+   VAR_TEMP 
+      Tr : "SM_udtTransitions";
+   END_VAR
+
+   VAR CONSTANT 
+      MINTRAILINGMIMINUM : Time := T#100ms;
+      ST_IDLE : Int;
+      ST_WAITRAISE : Int := 1;
+      ST_WAITFALL : Int := 2;
+      ST_ERRORMAX : Int := 3;
+      ST_ERRORMIN : Int := 4;
+      ST_RESET : Int := 5;
+   END_VAR
+
+
+BEGIN
+	#Tr.t[#ST_IDLE, #ST_WAITRAISE] := "SM_Trans"(C := #ResetRequested, P := 0);
+	
+	#Tr.t[#ST_WAITRAISE, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#Tr.t[#ST_WAITRAISE, #ST_WAITFALL] := "SM_Trans"(C := #ResetIn AND NOT #stat.prev.ResetIn, P := 1);
+	
+	#Tr.t[#ST_WAITFALL, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#Tr.t[#ST_WAITFALL, #ST_ERRORMIN] := "SM_Trans"(C := NOT #ResetIn AND #stat.prev.ResetIn AND #SM.StateTime < #TrailingMinimum, P := 1);
+	#Tr.t[#ST_WAITFALL, #ST_ERRORMAX] := "SM_Trans"(C := #SM.StateTime > #TrailingMaximum, P := 2);
+	#Tr.t[#ST_WAITFALL, #ST_RESET] := "SM_Trans"(C := NOT #ResetIn AND #stat.prev.ResetIn, P := 3);
+	
+	#Tr.t[#ST_ERRORMAX, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#Tr.t[#ST_ERRORMAX, #ST_WAITFALL] := "SM_Trans"(C := #ResetIn AND NOT #stat.prev.ResetIn, P := 1);
+	
+	#Tr.t[#ST_ERRORMIN, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#Tr.t[#ST_ERRORMIN, #ST_WAITFALL] := "SM_Trans"(C := #ResetIn AND NOT #stat.prev.ResetIn, P := 1);
+	
+	#Tr.t[#ST_RESET, #ST_IDLE] := "SM_Trans"(C := NOT #ResetRequested, P := 0);
+	#Tr.t[#ST_RESET, #ST_WAITRAISE] := "SM_Trans"(C := true, P := 1);
+	
+	#SM(Tr := #Tr);
+	
+	CASE #SM.State OF
+	    #ST_IDLE:
+	        #DiagCode := 16#0000;
+	        
+	    #ST_WAITRAISE:
+	        IF #TrailingMaximum < #TrailingMinimum OR #TrailingMinimum < T#100ms THEN
+	            #DiagCode := 16#C000;
+	        END_IF;
+	        
+	        IF #SM.StateFirstCall AND #ResetIn THEN
+	            #DiagCode := 16#C001;
+	        END_IF;
+	        
+	        IF #DiagCode <> 16#C000 AND #DiagCode <> 16#C001 THEN
+	            #DiagCode := 16#83E2;
+	        END_IF;
+	        
+	    #ST_WAITFALL:
+	        #DiagCode := 16#83F2;
+	        
+	    #ST_RESET:
+	        #DiagCode := 16#8000;
+	        
+	    #ST_ERRORMAX:
+	        #DiagCode := 16#C3E0;
+	        
+	    #ST_ERRORMIN:
+	        #DiagCode := 16#C3F0;
+	        
+	END_CASE;
+	
+	
+	#Ready := #SM.State <> #ST_IDLE;
+	#ResetOut := #SM.State = #ST_RESET;
+	#Error := #DiagCode = 16#C000 OR #DiagCode = 16#C001 OR #DiagCode = 16#C3E0 OR #DiagCode = 16#C3F0;
+	
+	
+	#stat.prev.ResetIn := #ResetIn;
+END_FUNCTION_BLOCK
+

@@ -1,0 +1,12 @@
+﻿FUNCTION "PL_DigSetValTrue" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_IN_OUT 
+      In : Byte;
+   END_VAR
+
+
+BEGIN
+	#In.%X7 := true;
+END_FUNCTION
+

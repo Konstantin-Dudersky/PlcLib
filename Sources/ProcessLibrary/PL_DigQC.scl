@@ -1,0 +1,21 @@
+﻿FUNCTION "PL_DigQC" : USInt
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      In : Byte;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         B : Byte;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	#temp.B := #In;
+	#temp.B.%X7 := false;
+	
+	#PL_DigQC := BYTE_TO_USINT(#temp.B);
+END_FUNCTION
+

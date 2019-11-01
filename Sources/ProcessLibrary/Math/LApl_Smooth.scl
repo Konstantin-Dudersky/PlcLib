@@ -1,0 +1,139 @@
+﻿FUNCTION_BLOCK "LApl_Smooth"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      PV : "PL_Ana";   // Analog input (process value)
+      TimeConstant : Time := T#10s;   // Filter time constant for Butterworth
+      OutlThreshold : Real := 10.0;   // Threshold of the outlier detection
+      OutlCycles : Int := 3;   // Number of cycles to hold outlier
+      SampleTime : Time := T#100ms;   // Sample Time
+      Feature { S7_HiddenAssignment := 'Hide'} : DWord := 16#00000000_00000000_00000000_00000000;
+      OutlDetOn : Bool;   // 1 = Outlier detection on
+      FilterOn : Bool := true;   // 1 = Filter on
+      Restart_or_FirstScan : Bool := true;   // 1 = Restart filter algorithm and reset internal memory
+   END_VAR
+
+   VAR_OUTPUT 
+      CleanPV : "PL_Ana";   // Output value
+      OutlDetected : Bool;   // 1 = outlier detected
+      ErrorNum : Int;   // Parametrization Error
+   END_VAR
+
+   VAR 
+      xx : Array[1..2] of Real;
+      b0 : Real;
+      b1 : Real;
+      b2 : Real;
+      aa1 : Real;
+      aa2 : Real;
+      TimeConstantOld : Time;
+      SampleTimeOld : Time;
+      PV_DelieredOld : Real;
+      OutlCount : Int;
+      _reserve : Array[0..7] of Byte;
+   END_VAR
+
+   VAR_TEMP 
+      l : Real;
+      nenner : Real;
+      PV_Deliered : Real;
+      PV_Filtered : Real;
+      rTimeConstant : Time;
+      rSampleTime : Time;
+      i : Int;
+   END_VAR
+
+
+BEGIN
+	(*
+	Smooth functions     
+	The block provides the following functions:
+	● Restart low pass filter
+	● Activate and deactivate maverick detection
+	
+	Restart low pass filter     
+	You can recalculated the coefficients of the Butterworth filter. To do this, you must restart filter 
+	(Restart = 1). 
+	The filter algorithm is then reinitialized, exactly as it is when the CPU is restarted or a change 
+	is made to the count value at the input parameter TimeConstant. The coefficients of the 
+	Butterworth filter are recalculated and the internal state memory of the filter is initialized so that 
+	the CleanPV output parameter is equal to the PV input parameter.
+	
+	Activate and deactivate maverick detection     
+	The maverick detection (OutlDetOn = 1) monitors the process value PV for the difference 
+	between two sequential sample values. These have to be within a tolerance range you have 
+	specified (OutlTreshold).
+	If the tolerance is violated, the maverick is set to the most recent valid value. The most recent 
+	valid measured value is then held constant by the block for a maximum of OutlCycles sample 
+	steps. If the maverick continues longer than this, it is accepted as a valid measured value.
+	
+	Forming the signal status for blocks     
+	This block provides the standard function Forming and outputting the signal status for 
+	mathematical blocks (Page 112).
+	The signal status for the block is formed using the following parameters and output at the 
+	CleanPV output parameter:
+	● PV.ST
+	*)
+	
+	IF
+	    #Restart_or_FirstScan
+	    OR (#TimeConstant <> #TimeConstantOld)
+	    OR (#SampleTime <> #SampleTimeOld)
+	    OR (#ErrorNum <> 0)
+	THEN
+	    #ErrorNum := 0;
+	    #Restart_or_FirstScan := false;
+	    #OutlCount := #OutlCycles;
+	    #rSampleTime := #SampleTime;
+	    IF #rSampleTime < T#1ms THEN
+	        #rSampleTime := T#1ms;
+	        #ErrorNum := 2;
+	    END_IF;
+	    #rTimeConstant := #TimeConstant;
+	    IF #rTimeConstant < 5 * #rSampleTime THEN
+	        #rTimeConstant := 5 * #rSampleTime;
+	        #ErrorNum := 61;
+	    END_IF;
+	    #PV_Filtered := #PV.Value;
+	    #l := 1.0 / (TAN_REAL(3.141592 * DINT_TO_REAL(TIME_TO_DINT(#rSampleTime)) / DINT_TO_REAL(TIME_TO_DINT(#rTimeConstant))));
+	    #nenner := #l * 1.41421356 + 1.0 + #l ** 2;
+	    #aa1 := (1.0 - #l ** 2) * 2.0 / #nenner;
+	    #aa2 := ((1.0 - 1.41421356 * #l) + #l ** 2) / #nenner;
+	    #b0 := 1.0 / #nenner;
+	    #b1 := #b0 * 2.0;
+	    #b2 := #b0;
+	    #xx[2] := (1.0 - #b2) * #PV.Value;
+	    #xx[1] := (- #aa2) * #xx[2] + (#b2 - #b0 * #aa2) * #PV.Value;
+	    #PV_Deliered := #PV.Value;
+	ELSE
+	    #ErrorNum := 0;
+	    IF #OutlDetOn THEN
+	        #OutlDetected := (#OutlCount > 0) AND (ABS(#PV.Value - #PV_DelieredOld) > ABS(#OutlThreshold));
+	        IF #OutlDetected THEN
+	            #OutlCount := #OutlCount - 1;
+	            #PV_Deliered := #PV_DelieredOld;
+	        ELSE
+	            #OutlCount := #OutlCycles;
+	            #PV_Deliered := #PV.Value;
+	        END_IF;
+	    ELSE
+	        #PV_Deliered := #PV.Value;
+	        #OutlDetected := false;
+	    END_IF;
+	    #PV_Filtered := #b0 * #PV_Deliered + #xx[2];
+	    #nenner := #xx[1];
+	    #xx[1] := (- #aa2) * #xx[2] + (#b2 - #b0 * #aa2) * #PV_Deliered;
+	    #xx[2] := (#nenner - #aa1 * #xx[2]) + (#b1 - #b0 * #aa1) * #PV_Deliered;
+	    IF #FilterOn THEN
+	        #CleanPV.Value := #PV_Filtered;
+	    ELSE
+	        #CleanPV.Value := #PV_Deliered;
+	    END_IF;
+	    #CleanPV.ST := #PV.ST;
+	END_IF;
+	
+	#TimeConstantOld := #TimeConstant;
+	#SampleTimeOld := #SampleTime;
+	#PV_DelieredOld := #PV_Deliered;
+END_FUNCTION_BLOCK
+

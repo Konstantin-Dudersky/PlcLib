@@ -1,0 +1,76 @@
+﻿FUNCTION_BLOCK "SF_Antivalent"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Activate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_ChannelNC { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_SafeBool";
+      S_ChannelNO { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_SafeBool";
+      DiscrepancyTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      S_AntivalentOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_SafeBool";
+      SafetyDemand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      DiagCode { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      ErrorId { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
+   END_VAR
+
+   VAR 
+      SF_Equivalent_Instance { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SF_Equivalent";
+   END_VAR
+
+   VAR_TEMP 
+      tempSafeBool : "SF_SafeBool";
+   END_VAR
+
+
+BEGIN
+	(*
+	========================================================================================================================
+	(company)
+	(c)Copyright (year) All Rights Reserved
+	------------------------------------------------------------------------------------------------------------------------
+	Library:       Safety
+	Tested with:   (target system with FW Version)
+	Engineering:   TIA Portal v15.1
+	Restrictions:  (OB types, etc.)
+	Requirements:
+	    Load memory: 12641 Bytes
+	    Work memory: 152 Bytes
+	Functionality: This function block converts two antivalent SAFEBOOL inputs (NO/NC pair) to one SAFEBOOL output with 
+	discrepancy time monitoring. This FB should not be used stand-alone since it has no restart interlock. It is required 
+	to connect the output to other safety related functionalities. 
+	------------------------------------------------------------------------------------------------------------------------
+	Change log table:
+	Version  Date       Expert in charge Changes applied
+	01.00.00 dd.mm.yyyy (name of expert) First released version
+	========================================================================================================================
+	ErrorId:
+	16#1 - general errors:
+	    
+	16#2 - SF_Equivalent
+	*)
+	
+	#tempSafeBool.Value := NOT #S_ChannelNO.Value;
+	
+	#SF_Equivalent_Instance(Activate        := #Activate,
+	                        S_ChannelA      := #S_ChannelNC,
+	                        S_ChannelB      := #tempSafeBool,
+	                        DiscrepancyTime := #DiscrepancyTime,
+	                        Ready           => #Ready,
+	                        S_EquivalentOut => #S_AntivalentOut,
+	                        SafetyDemand    => #SafetyDemand,
+	                        Error           => #Error,
+	                        DiagCode        => #DiagCode);
+	
+	IF #SF_Equivalent_Instance.Error THEN
+	    "DG_BlockError"(Sub        := 16#2,
+	                    SubErrorId := #SF_Equivalent_Instance.ErrorId,
+	                    ErrorId    := #ErrorId);
+	END_IF;
+	    
+	
+END_FUNCTION_BLOCK
+

@@ -1,0 +1,113 @@
+﻿FUNCTION_BLOCK "LApl_Aux_LimitMonitoring"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Value : Real;
+      Lim : Real;
+      Hyst : Real;
+      DC : Time;
+      DG : Time;
+      SampleTime : Time := T#100ms;
+      RstMode : Int;
+      Msg_Severity : Int;
+      Rst : Bool;
+      Enable : Bool := true;
+      MsgEn : Bool := true;
+      MsgLock : Bool;
+      Feature_Bit0 : Bool;   // Set startup charasteristics
+      Feature_Bit28 : Bool;   // Disabling operating points
+      Feature_Bit29 : Bool;   // Signaling limit violation
+      high : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      Act : Bool;
+      SumMsgAct : Bool;
+      msg : "DG_udtMsg";
+   END_VAR
+
+   VAR 
+      stat : Struct
+         Act : Bool;
+         DC_current : Time;
+         DG_current : Time;
+      END_STRUCT;
+      instMsg : "DG_Msg";
+   END_VAR
+
+
+BEGIN
+	(*
+	high - контроль нижнего или верхнего уровня:
+	    false - контроль нижнего уровня
+	    true - контроль верхнего уровня
+	*)
+	
+	IF #Enable THEN
+	    // вход
+	    IF NOT #stat.Act AND ((#high AND (#Value > #Lim)) OR (NOT #high AND (#Value < #Lim))) THEN
+	        IF #DC = T#0ms THEN
+	            #stat.Act := true;
+	        ELSE
+	            #stat.DC_current := #stat.DC_current + #SampleTime;
+	            IF #stat.DC_current >= #DC + #SampleTime THEN
+	                #stat.Act := true;
+	            END_IF;
+	        END_IF;
+	    ELSE
+	        #stat.DC_current := T#0ms;
+	    END_IF;
+	    // выход
+	    IF (#high AND #stat.Act AND (#Value < #Lim - #Hyst)) OR (NOT #high AND #stat.Act AND (#Value > #Lim + #Hyst)) THEN
+	        IF #RstMode = 2 THEN
+	            IF #Rst THEN
+	                #stat.Act := false;
+	            END_IF;
+	        ELSE
+	            IF #DG = T#0ms THEN
+	                #stat.Act := false;
+	            ELSE
+	                #stat.DG_current := #stat.DG_current + #SampleTime;
+	                IF #stat.DG_current >= #DG + #SampleTime THEN
+	                    #stat.Act := false;
+	                END_IF;
+	            END_IF;
+	        END_IF;
+	    ELSE
+	        #stat.DG_current := T#0ms;
+	    END_IF;
+	ELSE
+	    #stat.DC_current := T#0ms;
+	    #stat.DG_current := T#0ms;
+	    #stat.Act := false;
+	END_IF;
+	
+	// сбрасываем состояние при перезагрузке контроллера
+	IF "PL".FirstScan AND NOT #Feature_Bit0 THEN
+	    #stat.DC_current := T#0ms;
+	    #stat.DG_current := T#0ms;
+	    #stat.Act := false;
+	END_IF;
+	
+	#Act := #stat.Act;
+	
+	// фича бит 28
+	IF #Feature_Bit28 AND #MsgLock THEN
+	    #Act := false;
+	END_IF;
+	
+	#SumMsgAct := #Act;
+	
+	// фича бит 29
+	IF #Feature_Bit29 THEN
+	    #Act := NOT #Act;
+	END_IF;
+	
+	// сообщение
+	#instMsg(signal := #Act AND #MsgEn AND NOT #MsgLock,
+	         msgWithAck := #RstMode > 0,
+	         msgRank := #Msg_Severity,
+	         ack := #Rst,
+	         msg => #msg);
+END_FUNCTION_BLOCK
+

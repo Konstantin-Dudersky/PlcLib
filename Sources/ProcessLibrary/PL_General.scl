@@ -1,0 +1,75 @@
+﻿FUNCTION_BLOCK "PL_General"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+   VAR_INPUT 
+      OB_Number { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int := 35;
+      OB3x_SampleTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time := T#100ms;
+      CurrentTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "typeDtStruct";
+      PLC_type { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int := 1200;
+   END_VAR
+
+   VAR_OUTPUT 
+      FirstScan { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      QC { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         badDev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 16#0;
+         badProc { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 16#1;
+         uncDev { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 16#2;
+         uncProc { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 16#3;
+         sim { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 16#6;
+         good { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 16#A;
+         maint { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 16#B;
+         notconn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt := 16#F;
+      END_STRUCT;
+      AlwaysFalse { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+      AlwaysTrue { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "PL_Dig";
+   END_VAR
+
+   VAR 
+      stat : Struct
+         FirstScan_Delay : Time;
+      END_STRUCT;
+   END_VAR
+
+   VAR CONSTANT 
+      FIRSTSCAN_DURATION : Time := T#1s;
+   END_VAR
+
+
+BEGIN
+	(*
+	Блок для обработки общих данных для других блоков LApl
+	Нужно вызывать в двух OB:
+	    в OB100 (первый цикл контроллера)
+	    в OB3x - циклическое прерывание с интервалом OB3x_SampleTime
+	Во всех OB блок вызывается с одинаковым instance DB - Inst_LApl_General.
+	
+	//--------------------------------------------------------------------------------------------------
+	Входы:
+	
+	OB_number - номер OB, в котором вызывается блок
+	
+	OB3x_SampleTime - периодичность вызова блока, если блок вызывается в OB3x.
+	При вызове в OB100 значение не учитывается
+	
+	CurrentTime - текущее время контроллера в формате typeDTStruct
+	
+	PLC_type - тип используемого контроллера (возможно, понадобится в будущем)
+	
+	//--------------------------------------------------------------------------------------------------
+	Выходы:
+	
+	FirstScan - устанавливается в TRUE при перезагрузке контроллера на время, заданное 
+	в константе FIRSTSCAN_DURATION. После истечения времени устанавливается в FALSE.
+	*)
+	
+	IF #OB_Number = 100 THEN
+	    #stat.FirstScan_Delay := T#0ms;
+	ELSIF (#stat.FirstScan_Delay < #FIRSTSCAN_DURATION) AND (#OB_Number >= 30) AND (#OB_Number <= 39) THEN
+	    #stat.FirstScan_Delay := #stat.FirstScan_Delay + #OB3x_SampleTime;
+	END_IF;
+	
+	#FirstScan := (#stat.FirstScan_Delay < #FIRSTSCAN_DURATION);
+	
+	
+END_FUNCTION_BLOCK
+

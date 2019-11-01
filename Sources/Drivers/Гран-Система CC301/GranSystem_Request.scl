@@ -1,0 +1,35 @@
+﻿FUNCTION "GranSystem_Request" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Address : USInt;
+      "Function" : USInt;
+      Code : Byte;
+      Offset : Byte;
+      Tariff : Byte;
+      Clarification : Byte;
+   END_VAR
+
+   VAR_IN_OUT 
+      Buffer : Array[0..127] of Byte;
+   END_VAR
+
+   VAR_TEMP 
+      Temp : Struct
+         CRC : Word;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	#Buffer[0] := USINT_TO_BYTE(#Address);
+	#Buffer[1] := USINT_TO_BYTE(#Function);
+	#Buffer[2] := USINT_TO_BYTE(#Code);
+	#Buffer[3] := USINT_TO_BYTE(#Offset);
+	#Buffer[4] := USINT_TO_BYTE(#Tariff);
+	#Buffer[5] := USINT_TO_BYTE(#Clarification);
+	#Temp.CRC := "GranSystem_CRC16"(Len := 6, Buffer := #Buffer);
+	#Buffer[6] := #Temp.CRC.%B1;
+	#Buffer[7] := #Temp.CRC.%B0;
+END_FUNCTION
+

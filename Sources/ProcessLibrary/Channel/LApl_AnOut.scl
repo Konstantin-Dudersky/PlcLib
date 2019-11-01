@@ -1,0 +1,62 @@
+﻿FUNCTION_BLOCK "LApl_AnOut"
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : dooder
+VERSION : 0.1
+   VAR_INPUT 
+      PV_In : Real;
+      ScaleHigh : Real := 100.0;
+      ScaleLow : Real;
+      ScaleOff : Bool;
+      SimOn : Bool;
+      SimPV_In : Real;
+      StartVal : Real;
+      FlutEn : Bool;
+      FlutTmIn : Time;
+      Mode : Int := 1;
+   END_VAR
+
+   VAR_OUTPUT 
+      Bad : Bool;
+      PV_Out : Int;
+      ScaleOutHigh : Real;
+      ScaleOutLow : Real;
+      PV_HiAct : Bool;
+      PV_LoAct : Bool;
+      SimAct : Bool;
+      ErrorNum : Int := -1;
+   END_VAR
+
+   VAR_TEMP 
+      tIn : Real;
+   END_VAR
+
+
+BEGIN
+	(*
+	Блок аналогового выхода
+	
+	Mode:
+	    1 = 4..20мА или 0..10В, стандартные границы PlcLow и PlcHigh
+	    2 = 2..10В записывается на выход 0..10В
+	*)
+	
+	// Проверка на вхождение в диапазон
+	IF #PV_In > #ScaleHigh THEN
+	    #tIn := #ScaleHigh;
+	ELSIF #PV_In < #ScaleLow THEN
+	    #tIn := #ScaleLow;
+	ELSE
+	    #tIn := #PV_In;
+	END_IF;
+	
+	CASE #Mode OF
+	    1:
+	        // 4..20мА или 0..10В, стандартные границы PlcLow и PlcHigh
+	        #PV_Out := REAL_TO_INT(0 + (27648 - 0) * (#tIn - #ScaleLow) / (#ScaleHigh - #ScaleLow));
+	        
+	    2:
+	        // 2..10В записывается на выход 0..10В
+	        #PV_Out := REAL_TO_INT(5530 + (27648 - 5530) * (#tIn - #ScaleLow) / (#ScaleHigh - #ScaleLow));
+	END_CASE;
+END_FUNCTION_BLOCK
+

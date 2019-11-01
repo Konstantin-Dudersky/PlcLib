@@ -1,0 +1,36 @@
+﻿FUNCTION_BLOCK "SYS_ObPerf"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      BeginCycle { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      ExecTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;   // Execution time in microseconds
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         beginTime {InstructionName := 'DTL'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DTL;
+         endTime {InstructionName := 'DTL'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DTL;
+      END_STRUCT;
+      statDi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
+   END_VAR
+
+   VAR_TEMP 
+      tempI : Int;
+      tempTi : Time;
+   END_VAR
+
+
+BEGIN
+	IF #BeginCycle THEN
+	    #tempI := RD_LOC_T(#stat.beginTime);
+	ELSE
+	    #tempI := RD_LOC_T(#stat.endTime);
+	    // #ExecTime := "DiffDTL2μs"(In1 := #stat.endTime, In2 := #stat.beginTime);
+	    #tempTi := T_DIFF(IN1 := #stat.endTime, IN2 := #stat.beginTime);
+	    #ExecTime := TIME_TO_UDINT(#tempTi) * 1000;
+	END_IF;
+END_FUNCTION_BLOCK
+

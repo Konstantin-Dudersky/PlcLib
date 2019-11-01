@@ -1,0 +1,22 @@
+﻿FUNCTION "PL_DigAddQC" : Byte
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Value : Bool;
+      QC : USInt;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         B : Byte;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	#temp.B := USINT_TO_BYTE(#QC);
+	#temp.B.%X7 := #Value;
+	
+	#PL_DigAddQC := #temp.B;
+END_FUNCTION
+
