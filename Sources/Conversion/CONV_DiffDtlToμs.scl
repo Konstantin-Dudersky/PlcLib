@@ -1,0 +1,28 @@
+﻿FUNCTION "CONV_DiffDtlToμs" : DInt
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      In1 {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;   // Lower timestamp
+      In2 {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;   // Higher timestamp
+   END_VAR
+
+   VAR_TEMP 
+      tempTi : Time;
+      micro1 : UDInt;
+      micro2 : UDInt;
+      diff_micro : DInt;
+   END_VAR
+
+
+BEGIN
+	// difference in milliseconds
+	#tempTi := T_DIFF(IN1 := #In2, IN2 := #In1);
+	
+	#micro1 := (#In1.NANOSECOND MOD 1_000_000) / 1000;
+	#micro2 := (#In2.NANOSECOND MOD 1_000_000) / 1000;
+	
+	#diff_micro := UDINT_TO_DINT(#micro2) - UDINT_TO_DINT(#micro1);
+	
+	#CONV_DiffDtlToμs := (TIME_TO_DINT(#tempTi) * 1000 + #diff_micro);
+END_FUNCTION
+

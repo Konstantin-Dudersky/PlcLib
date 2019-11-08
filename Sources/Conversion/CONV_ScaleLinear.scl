@@ -1,0 +1,91 @@
+﻿FUNCTION "CONV_ScaleLinear" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      x : LReal;   // Value to be scaled
+      x1 : LReal;   // x coordinate for point 1
+      y1 : LReal;   // y coordinate for point 1
+      x2 : LReal;   // x coordinate for point 2
+      y2 : LReal;   // y coordinate for point 2
+      yMin : LReal;   // Lower limit for the output value
+      yMax : LReal;   // Upper limit for the output value
+   END_VAR
+
+   VAR_OUTPUT 
+      y : LReal;   // Scaled value y
+      error : Bool;   // FALSE: No error / TRUE: Error.
+      status : Word;   // Error information.
+   END_VAR
+
+   VAR_TEMP 
+      tempY : LReal;   // Temporary scaled value y
+   END_VAR
+
+   VAR CONSTANT 
+      NO_ERROR : Word := 16#0000;   // No error
+      "LOW_LIM_OVER UP_LIM" : Word := 16#8204;   // Lower limit is greater than upper limit
+      Y_LIMITED_TO_YMIN : Word := 16#8205;   // Y value limited to yMin
+      Y_LIMITED_TO_YMAX : Word := 16#8206;   // Y value limited to yMax
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Upd 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function scales a value (INT/REAL)
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 27.01.2017  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	// 02.00.00 25.01.2019  Siemens Industry Online Support
+	//                      Data type changed from Variant to LReal
+	//-----------------------------------------------------------------------------
+	//Status Codes: 16#0000 - no error
+	//              16#8204 - Lower limit is greater than upper limit. 
+	//=============================================================================
+	
+	#error := FALSE;
+	#status := #NO_ERROR;
+	
+	IF (#yMin > #yMax)
+	THEN
+	  #error := TRUE;
+	  #status := #"LOW_LIM_OVER UP_LIM";
+	  RETURN;
+	END_IF;
+	
+	// Scale algorithm
+	IF ((#x2 - #x1) = 0.0)
+	THEN
+	  #tempY := #y1;
+	ELSE
+	  #tempY := (#y2 - #y1) / (#x2 - #x1) * (#x - #x1) + #y1;
+	END_IF;
+	
+	// Check upper and lower limits
+	IF (#tempY < #yMin)
+	THEN
+	  #y := #yMin;
+	  #status := #Y_LIMITED_TO_YMIN;  //No error, only for information
+	ELSIF (#tempY > #yMax)
+	THEN
+	  #y := #yMax;
+	  #status := #Y_LIMITED_TO_YMAX;  //No error, only for information
+	ELSE
+	  #y := #tempY;
+	END_IF;
+	
+	
+END_FUNCTION
+

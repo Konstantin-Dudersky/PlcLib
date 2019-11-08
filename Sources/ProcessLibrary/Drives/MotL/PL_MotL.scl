@@ -619,7 +619,7 @@ BEGIN
 	END_IF;
 	
 	
-	IF NOT #OosAct.Value AND #OBInfo.ObCycle THEN
+	IF NOT #OosAct.Value AND #OBInfo.IsObCycle THEN
 	    
 	    // блокировка активна
 	    #temp.Interlocked := (#instIntlock.OutLock_N OR #instProtect.OutLock_N OR #stat.ResetNeededProtect
@@ -1246,7 +1246,7 @@ BEGIN
 	    END_IF;
 	END_IF;
 	
-	IF #OBInfo.FirstScan OR #OBInfo.ObCycle THEN
+	IF #OBInfo.FirstScan OR #OBInfo.IsObCycle THEN
 	    
 	    IF NOT #OosAct.Value THEN
 	        #GrpErr.Value := #temp.MonErr OR #CSF.Value OR #stat.ResetNeededTrip OR #temp.Trip_N

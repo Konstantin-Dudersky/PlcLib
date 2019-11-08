@@ -1,0 +1,121 @@
+﻿FUNCTION "CONV_TimeToString" : String
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      timeValue : Time;   // Time value to convert
+   END_VAR
+
+   VAR_OUTPUT 
+      stringDay : String;   // String for day
+      stringHour : String;   // String for hour
+      stringMinute : String;   // String for minute
+      stringSecond : String;   // String for second
+      stringMilliSecond : String;   // String for millisecond
+   END_VAR
+
+   VAR_TEMP 
+      tempStringTime : String;
+      tempTimeInt : DInt;
+      tempModDays : DInt;
+      tempModHours : DInt;
+      tempModMinutes : DInt;
+      tempModSecond : DInt;
+      tempModMilliSecond : DInt;
+      tempDivDays : DInt;
+      tempDivHours : DInt;
+      tempDivMinutes : DInt;
+      tempDivSecond : DInt;
+      tempDivMillisecond : DInt;
+   END_VAR
+
+   VAR CONSTANT 
+      MS_PER_DAY : DInt := 86400000;
+      MS_PER_HOUR : DInt := 3600000;
+      MS_PER_MINUTE : DInt := 60000;
+      MS_PER_SECOND : DInt := 1000;
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	// Siemens AG
+	// (c)Copyright 2017
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 SP1 Upd 5
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts a time value to a string
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 03.07.2018  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	// Init string
+	#tempStringTime := '0';
+	
+	#tempTimeInt := TIME_TO_DINT(#timeValue);
+	
+	#tempDivDays := #tempTimeInt / #MS_PER_DAY;
+	#tempModDays := #tempTimeInt MOD #MS_PER_DAY;
+	
+	#tempDivHours := #tempModDays / #MS_PER_HOUR;
+	#tempModHours := #tempModDays MOD #MS_PER_HOUR;
+	
+	#tempDivMinutes := #tempModHours / #MS_PER_MINUTE;
+	#tempModMinutes := #tempModHours MOD #MS_PER_MINUTE;
+	
+	#tempDivSecond := #tempModMinutes / #MS_PER_SECOND;
+	#tempModSecond := #tempModMinutes MOD #MS_PER_SECOND;
+	
+	#tempDivMillisecond := #tempModSecond;
+	
+	
+	#stringDay := DELETE(IN := DINT_TO_STRING(#tempDivDays), L := 1, P := 1);
+	#stringHour := DELETE(IN := DINT_TO_STRING(#tempDivHours), L := 1, P := 1);;
+	#stringMinute := DELETE(IN := DINT_TO_STRING(#tempDivMinutes), L := 1, P := 1);
+	#stringSecond := DELETE(IN := DINT_TO_STRING(#tempDivSecond), L := 1, P := 1);
+	#stringMilliSecond := DELETE(IN := DINT_TO_STRING(#tempDivMillisecond), L := 1, P := 1);
+	
+	IF (#tempDivMillisecond > 0)
+	THEN
+	  #tempStringTime := CONCAT(IN1 := #stringMilliSecond, IN2 := 'MS');
+	END_IF;
+	
+	IF (#tempDivSecond > 0)
+	THEN
+	  #tempStringTime := CONCAT(IN1 := #stringSecond, IN2 := 'S', IN3 := #stringMilliSecond, IN4 := 'MS');
+	END_IF;
+	
+	IF (#tempDivMinutes > 0)
+	THEN
+	  #tempStringTime := CONCAT(IN1 := #stringMinute, IN2 := 'M', IN3 := #stringSecond, IN4 := 'S', IN5 := #stringMilliSecond, IN6 := 'MS');
+	END_IF;
+	
+	IF (#tempDivHours > 0)
+	THEN
+	  #tempStringTime := CONCAT(IN1 := #stringHour, IN2 := 'H', IN3 := #stringMinute, IN4 := 'M', IN5 := #stringSecond, IN6 := 'S', IN7 := #stringMilliSecond, IN8 := 'MS');
+	END_IF;
+	
+	IF (#tempDivDays > 0)
+	THEN
+	  #tempStringTime := CONCAT(IN1 := #stringDay, IN2 := 'D', IN3 := #stringHour, IN4 := 'H', IN5 := #stringMinute, IN6 := 'M', IN7 := #stringSecond, IN8 := 'S', IN9 := #stringMilliSecond, IN10 := 'MS');
+	END_IF;
+	
+	// Write outputs
+	#CONV_TimeToString := #tempStringTime;
+	
+	
+	
+	
+	
+	
+END_FUNCTION
+

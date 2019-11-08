@@ -1,0 +1,1079 @@
+﻿FUNCTION_BLOCK "PL_CountOh"
+TITLE = 'Counter of operating hours'
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : AdvLib90
+FAMILY : Count
+NAME : CountOh
+VERSION : 5.0
+   VAR_INPUT 
+      OldDays { CFC_Visible := 'false'; CFC_Interconnectable := 'false'} : Int;   // Previous Days Value
+      OldHours { CFC_Visible := 'false'; CFC_Interconnectable := 'false'} : Int;   // Previous Hours Value
+      OldMinutes { CFC_Visible := 'false'; CFC_Interconnectable := 'false'} : Int;   // Previous Minutes Value
+      OldSeconds { CFC_Visible := 'false'; CFC_Interconnectable := 'false'} : Int;   // Previous Seconds Value
+      In { CFC_ForTest := 'true'} : "PL_Dig";   // Device Status 1=ON,0=OFF
+      LiOp { CFC_ForTest := 'true'} : "PL_Dig";   // 1=Link, 0=Operator
+      OffOp { CFC_Visible := 'false'} : Bool := TRUE;   // Counter Off by Operator: 1 = Counter is Off
+      UpOp { CFC_Visible := 'false'} : Bool;   // 1 = Up Counter
+      DnOp { CFC_Visible := 'false'} : Bool;   // 1 = Down Counter
+      OffLi { CFC_ForTest := 'true'} : "PL_Dig";   // Counter Off by Field signal: 1 = Counter is Off
+      UpLi { CFC_ForTest := 'true'} : "PL_Dig";   // 1 = Up Counter
+      DnLi { CFC_ForTest := 'true'} : "PL_Dig";   // 1 = Down Counter
+      DaysAHLim : Int := 95;   // Days-High Alarm Limit
+      HrsAHLim : Int;   // Hours-High Alarm Limit
+      MinsAHLim : Int;   // Minutes-High Alarm Limit
+      DaysWHLim : Int := 90;   // Days-High warning Limit
+      HrsWHLim : Int;   // Hours-High warning Limit
+      MinsWHLim : Int;   // Minutes-High warning Limit
+      DaysTHLim : Int := 85;   // Days-High Tolerance Limit
+      HrsTHLim : Int;   // Hours-High Tolerance Limit
+      MinsTHLim : Int;   // Minutes-High Tolerance Limit
+      DaysTLLim : Int;   // Days-Low Tolerance Limit
+      HrsTLLim : Int;   // Hours-Low Tolerance Limit
+      MinsTLLim : Int;   // Minutes-Low Tolerance Limit
+      DaysWLLim : Int;   // Days-Low warning Limit
+      HrsWLLim : Int;   // Hours-Low warning Limit
+      MinsWLLim : Int;   // Minutes-Low warning Limit
+      DaysALLim : Int;   // Days-Low Alarm Limit Limit
+      HrsALLim : Int;   // Hours-Low Alarm Limit Limit
+      MinsALLim : Int;   // Minutes-Low Alarm Limit Limit
+      DayOpHiScale : Int := 100;   // Days Bar Display High Value
+      DayOpLoScale : Int;   // Days Bar Display Low Value
+      HrsOpHiScale : Int := 23;   // Hours-Bar Display High Value
+      HrsOpLoScale : Int;   // Hours-Bar Display Low Value
+      MinOpHiScale : Int := 59;   // Minutes-Bar Display High Value
+      MinOpLoScale : Int;   // Minutes-Bar Display Low Value
+      MS_RelOp { CFC_Visible := 'false'} : Bool;   // Operator input for MS Release, 1: MS release requirement
+      OnOp { CFC_Visible := 'false'} : Bool;   // 1=On Mode: On Mode by Operator
+      OosOp { CFC_Visible := 'false'} : Bool;   // 1=Oos Mode: Oos Mode by Operator
+      OosLi { CFC_ForTest := 'true'} : "PL_Dig";   // 1=Oos Mode: Oos Mode by Field Signal
+      AH_En { CFC_Visible := 'false'} : Bool := TRUE;   // High Alarm Enable
+      WH_En { CFC_Visible := 'false'} : Bool := TRUE;   // High Warning Enable
+      TH_En { CFC_Visible := 'false'} : Bool;   // High Tolerance Enable
+      TL_En { CFC_Visible := 'false'} : Bool;   // Low Tolerance Enable
+      WL_En { CFC_Visible := 'false'} : Bool := TRUE;   // Low Warning Enable
+      AL_En { CFC_Visible := 'false'} : Bool := TRUE;   // Low Alarm Enable
+      AH_MsgEn { CFC_Visible := 'false'} : Bool := TRUE;   // Alarm High Message Enable.
+      WH_MsgEn { CFC_Visible := 'false'} : Bool := TRUE;   // Warning High Message Enable.
+      TH_MsgEn { CFC_Visible := 'false'} : Bool := TRUE;   // Tolerance High Message Enable.
+      TL_MsgEn { CFC_Visible := 'false'} : Bool := TRUE;   // Tolerance Low Message Enable.
+      WL_MsgEn { CFC_Visible := 'false'} : Bool := TRUE;   // Warning Low Message Enable.
+      AL_MsgEn { CFC_Visible := 'false'} : Bool := TRUE;   // Alarm Low Message Enable.
+      Reset { CFC_ForTest := 'true'} : "PL_Dig";   // 1 = Reset Counter
+      PresetEn { CFC_Visible := 'false'} : Bool;   // Preset Enable
+      PresetTime { CFC_Visible := 'false'} : DWord;   // Preset Time value[Sec].
+      MsgLock { CFC_Visible := 'false'} : "PL_Dig";   // Inhibit process message
+      SampleTime { CFC_Visible := 'false'; CFC_Interconnectable := 'false'; CFC_Configurable := 'false'} : Real := 0.1;   // Sample Time[s]
+      RunUpCyc { CFC_Visible := 'false'} : Int := 3;   // Number of cycles for which all messages are suppressed
+      BatchEn { CFC_Visible := 'false'} : Bool;   // Enable Remote Operation of Controller by Batch Recipe
+      BatchID { CFC_Visible := 'false'} : DWord;   // Current Batch ID (number)
+      BatchName { CFC_Visible := 'false'} : String[32];   // Current Batch Name
+      StepNo { CFC_Visible := 'false'} : DWord;   // Batch Step Number
+      Occupied { CFC_Visible := 'false'} : Bool;   // Occupied by Batch
+      OS_Perm { CFC_Visible := 'false'} : Struct   // Operator Permissions
+         Bit0 : Bool := TRUE;   // Reserved
+         Bit1 : Bool := TRUE;   // 1 = Operator can switch to On
+         Bit2 : Bool := TRUE;   // Reserved
+         Bit3 : Bool := TRUE;   // 1 = Operator can switch to OOS
+         Bit4 : Bool := TRUE;   // 1 = Operator can switch to Off mode
+         Bit5 : Bool := TRUE;   // 1 = Operator can switch to Up mode
+         Bit6 : Bool := TRUE;   // 1 = Operator can switch to Down mode
+         Bit7 : Bool := TRUE;   // Reserved
+         Bit8 : Bool := TRUE;   // Reserved
+         Bit9 : Bool := TRUE;   // Reserved
+         Bit10 : Bool := TRUE;   // Reserved
+         Bit11 : Bool := TRUE;   // Reserved
+         Bit12 : Bool := TRUE;   // 1 = Operator can enable function maintenance release
+         Bit13 : Bool := TRUE;   // 1 = Operator can enter AH_Lim
+         Bit14 : Bool := TRUE;   // 1 = Operator can enter WH_Lim
+         Bit15 : Bool := TRUE;   // 1 = Operator can enter TH_Lim
+         Bit16 : Bool := TRUE;   // Reserved
+         Bit17 : Bool := TRUE;   // 1 = Operator can enter AL_Lim
+         Bit18 : Bool := TRUE;   // 1 = Operator can enter WL_Lim
+         Bit19 : Bool := TRUE;   // 1 = Operator can enter TL_Lim
+         Bit20 : Bool := TRUE;   // Reserved
+         Bit21 : Bool := TRUE;   // 1 = Operator can enable preset
+         Bit22 : Bool := TRUE;   // 1 = Operator can enter preset time Value
+         Bit23 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AH_MsgEn
+         Bit24 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over WH_MsgEn
+         Bit25 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over TH_MsgEn
+         Bit26 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over TL_MsgEn
+         Bit27 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over WL_MsgEn
+         Bit28 : Bool := TRUE;   // 1 = Operator can activate/deactivate message over AL_MsgEn
+         Bit29 : Bool := TRUE;   // Reserved
+         Bit30 : Bool := TRUE;   // Reserved
+         Bit31 : Bool := TRUE;   // Reserved
+      END_STRUCT;
+      OpSt_In { CFC_Visible := 'false'} : DWord;   // Enabled operator stations
+      Feature { CFC_Visible := 'false'} : Struct   // Status of various features
+         Bit0 : Bool;   // 0 = Start up with defined initializing in OB100; 1 = keep last stored values
+         Bit1 : Bool;   // 1 = OosLi can switch to Out of Service
+         Bit2 : Bool;   // Reserved
+         Bit3 : Bool;   // Reserved
+         Bit4 : Bool;   // Reserved
+         Bit5 : Bool;   // 1 = Start up with OldDays, OldHours, OldMinutes, OldSeconds
+         Bit6 : Bool;   // Reserved
+         Bit7 : Bool;   // Reserved
+         Bit8 : Bool;   // Reserved
+         Bit9 : Bool;   // Reserved
+         Bit10 : Bool;   // Reserved
+         Bit11 : Bool;   // Reserved
+         Bit12 : Bool;   // Reserved
+         Bit13 : Bool;   // Reserved
+         Bit14 : Bool;   // Reserved
+         Bit15 : Bool;   // Reserved
+         Bit16 : Bool;   // Reserved
+         Bit17 : Bool;   // Reserved
+         Bit18 : Bool;   // Reserved
+         Bit19 : Bool;   // Reserved
+         Bit20 : Bool;   // Reserved
+         Bit21 : Bool;   // Reserved
+         Bit22 : Bool;   // 1 = Enable message state actualization
+         Bit23 : Bool;   // Reserved
+         Bit24 : Bool;   // 1 = Local authorization active
+         Bit25 : Bool;   // Reserved
+         Bit26 : Bool;   // 1 = Reset switching points if switching to Out of Service
+         Bit27 : Bool;   // Reserved
+         Bit28 : Bool;   // 1 = Disable switching points if MsgLock =1
+         Bit29 : Bool;   // 1 = Signal value =0 (0 active) if limit is violated
+         Bit30 : Bool;   // 1 = Resetting via input signal if LiOp =1, via faceplate if LiOp =0
+         Bit31 : Bool;   // Reserved
+      END_STRUCT;
+   END_VAR
+
+   VAR_OUTPUT 
+      MS_Release : "PL_Dig";   // 1: MS release
+      DeviceOn { CFC_ForTest := 'true'; CFC_Visible := 'false'} : "PL_Dig";   // 1= Device On
+      CountMode { CFC_ForTest := 'true'} : Int;   // Counting Mode; 0=Off,1=Up,2=Down
+      Days { CFC_ForTest := 'true'} : Int;   // Operating Days
+      Hours { CFC_ForTest := 'true'} : Int;   // Operating Hours
+      Minutes { CFC_ForTest := 'true'} : Int;   // Operating Minutes
+      Seconds { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Int;   // Operating Seconds
+      TotalTime { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DWord;   // Total Operating Time[Sec].
+      TimeMin { CFC_Visible := 'false'} : DInt;   // Operating Time [In Minutes]
+      TmMinST { CFC_Visible := 'false'} : Byte := BYTE#16#80;   // Signal Status for TimeMin
+      AH_Act { CFC_Visible := 'false'; CFC_ForTest := 'true'} : "PL_Dig";   // Alarm High Active
+      WH_Act { CFC_Visible := 'false'; CFC_ForTest := 'true'} : "PL_Dig";   // Warning High Active
+      TH_Act { CFC_Visible := 'false'; CFC_ForTest := 'true'} : "PL_Dig";   // Tolerance High Active
+      TL_Act { CFC_Visible := 'false'; CFC_ForTest := 'true'} : "PL_Dig";   // Tolerance Low Active
+      WL_Act { CFC_Visible := 'false'; CFC_ForTest := 'true'} : "PL_Dig";   // Warning Low Active
+      AL_Act { CFC_Visible := 'false'; CFC_ForTest := 'true'} : "PL_Dig";   // Alarm Low Active
+      SumMsgAct { CFC_Visible := 'false'; CFC_ForTest := 'true'} : "PL_Dig";   // Summary message, 1 = Any of the process, external or system messages is active
+      AH_Minutes { CFC_Visible := 'false'} : DInt;   // High Alarm Time [in Minutes]
+      WH_Minutes { CFC_Visible := 'false'} : DInt;   // High Warning Time [in Minutes]
+      TH_Minutes { CFC_Visible := 'false'} : DInt;   // High Tolerance Time [in Minutes]
+      TL_Minutes { CFC_Visible := 'false'} : DInt;   // Low Tolerance Time [in Minutes]
+      WL_Minutes { CFC_Visible := 'false'} : DInt;   // Low Warning Time [in Minutes]
+      AL_Minutes { CFC_Visible := 'false'} : DInt;   // Low Alarm Time [in Minutes]
+      BarOpHiScale : DInt := 100;   // Bar Display Limits [In Minutes] High Value
+      BarOpLoScale : DInt;   // Bar Display Limits [In Minutes] Low Value
+      OosAct { CFC_ForTest := 'true'} : "PL_Dig";   // Out Of Service is active
+      OnAct { CFC_Visible := 'false'; CFC_ForTest := 'true'} : "PL_Dig";   // On Mode is active
+      OS_PermOut { CFC_Visible := 'false'} : DWord := DWORD#16#FFFF_FFFF;   // Operator Permission: Output for OS
+      OS_PermLog { CFC_Visible := 'false'} : DWord := DWORD#16#FFFF_FFFF;   // Operator Permission: Output for OS
+      OpSt_Out { CFC_Visible := 'false'} : DWord;   // Enabled operator stations
+      ST_Worst { CFC_Visible := 'false'} : Byte := BYTE#16#80;   // Worst Signal Status
+      Status1 { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DWord;   // Status1 Word
+      Status2 { CFC_Visible := 'false'; CFC_ForTest := 'true'} : DWord;   // Status2 Word
+      ErrorNum { CFC_Visible := 'false'; CFC_ForTest := 'true'} : Int := -1;   // Error Number
+      MsgErr { CFC_Visible := 'false'} : Bool;   // 1=Messaging Error Occurs
+      MsgStat { CFC_Visible := 'false'} : Word;   // Message status
+      MsgAckn { CFC_Visible := 'false'} : Word;   // Message acknowledgement status
+      EventState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EventState";
+   END_VAR
+
+   VAR 
+      SbMsgEffOld : Byte;   // Effective message signal (Last cycle)
+      SnMsgToggle : Int;   // Reduce frequencey of call of ALARM_8P waiting for ACK
+      SnRunUpCyc : Int;   // Counters of run-up-cycle.
+      SdwPrevBatchId : DWord;   // saved Batch_Id
+      SdwStepNoLoc : DWord;   // variable for StepNo
+      SdwBatchId : DWord;   // variable for BatchId
+      SarBatchName : Array[1..32] of Byte := 32(BYTE#16#00);
+      Sar_reserve : Array[0..15] of Byte;   // 16 bytes reserved for future use.
+      SlCntMs : DInt;   // Cycles Counter in ms
+      SlCntHr : DInt;   // Cycles Counter in hours
+      SnDaysAHLim : Int;   // Days High High Limit
+      SnDaysWHLim : Int;   // Days High Limit
+      SnDaysTHLim : Int;
+      SnDaysALLim : Int;   // Days High High Limit
+      SnDaysWLLim : Int;   // Days High Limit
+      SnDaysTLLim : Int;
+      SnDaysOpHiScale : Int;   // Variable for Days Bar Hi Scale
+      SnDaysOpLoScale : Int;   // Variable for Days Bar Lo Scale
+      SnHrsAHLim : Int;   // Hrs High High Limit
+      SnHrsWHLim : Int;   // Hrs High Limit
+      SnHrsTHLim : Int;
+      SnHrsALLim : Int;   // Hrs High High Limit
+      SnHrsWLLim : Int;   // Hrs High Limit
+      SnHrsTLLim : Int;
+      SnHrsOpHiScale : Int;   // Variable for Hrs Bar Hi Scale
+      SnHrsOpLoScale : Int;   // Variable for Hrs Bar Lo Scale
+      SnMinsAHLim : Int;   // Mins High High Limit
+      SnMinsWHLim : Int;   // Mins High Limit
+      SnMinsTHLim : Int;
+      SnMinsALLim : Int;   // Mins High High Limit
+      SnMinsWLLim : Int;   // Mins High Limit
+      SnMinsTLLim : Int;
+      SnMinsOpHiScale : Int;   // Variable for Mins Bar Hi Scale
+      SnMinsOpLoScale : Int;   // Variable for Mins Bar Lo Scale
+      SxShowAlarm : Bool := TRUE;   // Call instance of ALARM_8P
+      SxPrevMode : Bool := TRUE;   // Indicator for previous Mode.
+      SxOff : Bool := TRUE;   // Variable for Off mode
+      SxOosLi : Bool;   // rising edge of OosLi
+      SxFirstStart : Bool := TRUE;   // Initial run.
+      SxReset : Bool;   // Rising edge of Reset signal.
+      SxFeat_SwiPoiFalseActOld : Bool;   // Old value of Feature Bit29
+      Event { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "Event";
+   END_VAR
+
+   VAR_TEMP 
+      stcTOP_SI : Struct
+         EV_CLASS : Byte;   // Bits 0 to 3: Event ID·  Bits 4 to 7: Event class
+         EV_NUM : Byte;   // Event number
+         PRIORITY : Byte;   // Number of the priority class (meaning OF B#16#FE: OB NOT available or locked)
+         NUM : Byte;   // OB number.
+         TYP2_3 : Byte;   // Data ID 2_3: identifies the information entered in ZI2_3
+         TYP1 : Byte;   // Data ID 1  : identifies the information entered in ZI1
+         ZI1 : Word;   // Additional information 1
+         ZI2_3 : DWord;   // Additional information 2_3
+      END_STRUCT;
+      stcSTART_UP_SI : Struct
+         EV_CLASS : Byte;   // Bits 0 to 3: Event ID·  Bits 4 to 7: Event class
+         EV_NUM : Byte;   // Event number
+         PRIORITY : Byte;   // Number of the priority class (meaning OF B#16#FE: OB NOT available or locked)
+         NUM : Byte;   // OB number.
+         TYP2_3 : Byte;   // Data ID 2_3: identifies the information entered in ZI2_3
+         TYP1 : Byte;   // Data ID 1  : identifies the information entered in ZI1
+         ZI1 : Word;   // Additional information 1
+         ZI2_3 : DWord;   // Additional information 2_3
+      END_STRUCT;
+      stcDigVal : Struct
+         Value : Bool;   // Value
+         ST : Byte;   // Signal Status
+      END_STRUCT;
+      nTemp : Int;   // Temporary variable, Error SFC/SFB call
+      nPresetDays : Int;   // Variable for PresetDays
+      nPresetHrs : Int;   // Variable for Preset Hours
+      nPresetMins : Int;   // Variable for Preset Minutes
+      nPresetSec : Int;   // Variable for Preset Seconds
+      lTotalTime : DInt;   // Variable for TotalTime
+      byTemp : Byte;   // Variable used in swapping of bytes
+      stcInST : Struct   // Input 0..15 Signal Status
+         b0 : Byte;
+         b1 : Byte;
+         b2 : Byte;
+         b3 : Byte;
+         b4 : Byte;
+         b5 : Byte;
+         b6 : Byte;
+         b7 : Byte;
+         b8 : Byte;
+         b9 : Byte;
+         b10 : Byte;
+         b11 : Byte;
+         b12 : Byte;
+         b13 : Byte;
+         b14 : Byte;
+         b15 : Byte;
+      END_STRUCT;
+      xFeature_StartUp : Bool;   // Variable for StartUp characteristics.
+      xFeature_OosLiEn : Bool;   // Variable for Oosmode
+      xFeatStartUpWithOldOut : Bool;   // 1 = Start up with OldDays, OldHours, OldMinutes, OldSeconds
+      xFeature_MsgAck : Bool;   // Variable for Enabling Message Acknowledge
+      xFeat_SwiPoiDis : Bool;
+      xFeat_SwiPoiFalseAct : Bool;
+      xFeatLocalAuth : Bool;   // Bit 24 = 1, Function local authorization active
+      xFeatSwiPoiOOS : Bool;   // Bit 26 = 1, 1 = Reset switching points if switching to Out of Service
+      xFeat_ResetDpdsOnLiOp : Bool;   // Bit 30 = 1, 1 = Resetting via input signal if LiOp =1, via faceplate if LiOp =0
+      xOS_Perm_On : Bool;   // Operator permission to switch to On State.
+      xOS_Perm_Oos : Bool;   // Operator permission to switch to Oos state.
+      xOS_Perm_AH_Lim : Bool;   // Operator permission to set AHLim value.
+      xOS_Perm_AL_Lim : Bool;   // Operator permission to set ALLim value.
+      xOS_Perm_WH_Lim : Bool;   // Operator permission to set WHLim value.
+      xOS_Perm_WL_Lim : Bool;   // Operator permission to set WLLim value.
+      xOS_Perm_TH_Lim : Bool;   // Operator permission to set THLim value.
+      xOS_Perm_TL_Lim : Bool;   // Operator permission to set TLLim value.
+      xOS_Perm_Preset_En : Bool;   // Operator permission to enable preset.
+      xOS_Perm_Preset_Time : Bool;   // Operator Permission to enter Preset Time value
+      xOS_Perm_MS_Release : Bool;   // Operator permission for MS_Release
+      xOS_Perm_Count_Off : Bool;   // Operator persmission to off.
+      xOS_Perm_Count_Up : Bool;   // Operator permission to Count up;
+      xOS_Perm_Count_Down : Bool;   // Operator permission to count down.
+      xOS_Perm_AH_MsgEn : Bool;   // Operator permission activate/deactivate message over AH_MsgEn.
+      xOS_Perm_WH_MsgEn : Bool;   // Operator permission activate/deactivate message over WH_MsgEn.
+      xOS_Perm_TH_MsgEn : Bool;   // Operator permission activate/deactivate message over TH_MsgEn.
+      xOS_Perm_TL_MsgEn : Bool;   // Operator permission activate/deactivate message over TL_MsgEn.
+      xOS_Perm_WL_MsgEn : Bool;   // Operator permission activate/deactivate message over WL_MsgEn.
+      xOS_Perm_AL_MsgEn : Bool;   // Operator permission activate/deactivate message over AL_MsgEn.
+      xUpDn : Bool;   // variable to indicate up or down counting
+      xOB_Cycle : Bool;   // block is running in a cyclic interrupt OB
+      xOB_Start : Bool;   // block is running in start OB
+      xInvalidSignalState : Bool;   // Status1 Bit14
+   END_VAR
+
+
+BEGIN
+	#stcDigVal.Value := false;
+	#stcDigVal.ST := 16#80;
+	#xUpDn := #SxPrevMode;
+	
+	#xFeature_StartUp := #Feature.Bit0;
+	#xFeature_OosLiEn := #Feature.Bit1;
+	#xFeatStartUpWithOldOut := #Feature.Bit5;
+	#xFeature_MsgAck := #Feature.Bit22;
+	#xFeat_SwiPoiDis := #Feature.Bit28;
+	#xFeat_SwiPoiFalseAct := #Feature.Bit29;
+	#xFeatLocalAuth := #Feature.Bit24;
+	#xFeatSwiPoiOOS := #Feature.Bit26;
+	#xFeat_ResetDpdsOnLiOp := #Feature.Bit30;
+	
+	GATHER(IN  := #OS_Perm,
+	       OUT => #OS_PermOut);
+	
+	#xOS_Perm_On := false;
+	#xOS_Perm_Oos := #OS_Perm.Bit3;
+	#xOS_Perm_Count_Off := #OS_Perm.Bit4;
+	#xOS_Perm_Count_Up := #OS_Perm.Bit5;
+	#xOS_Perm_Count_Down := #OS_Perm.Bit6;
+	#xOS_Perm_MS_Release := #OS_Perm.Bit12;
+	#xOS_Perm_AH_Lim := #OS_Perm.Bit13;
+	#xOS_Perm_WH_Lim := #OS_Perm.Bit14;
+	#xOS_Perm_TH_Lim := #OS_Perm.Bit15;
+	#xOS_Perm_AL_Lim := #OS_Perm.Bit17;
+	#xOS_Perm_WL_Lim := #OS_Perm.Bit18;
+	#xOS_Perm_TL_Lim := #OS_Perm.Bit19;
+	#xOS_Perm_Preset_En := #OS_Perm.Bit21;
+	#xOS_Perm_Preset_Time := #OS_Perm.Bit22;
+	#xOS_Perm_AH_MsgEn := #OS_Perm.Bit23;
+	#xOS_Perm_WH_MsgEn := #OS_Perm.Bit24;
+	#xOS_Perm_TH_MsgEn := #OS_Perm.Bit25;
+	#xOS_Perm_TL_MsgEn := #OS_Perm.Bit26;
+	#xOS_Perm_WL_MsgEn := #OS_Perm.Bit27;
+	#xOS_Perm_AL_MsgEn := #OS_Perm.Bit28;
+	
+	#nTemp := RD_SINFO(TOP_SI => #stcTOP_SI, START_UP_SI => #stcSTART_UP_SI);
+	#xOB_Cycle := CHAR_TO_INT(BYTE_TO_CHAR(#stcTOP_SI.NUM)) >= 30 AND CHAR_TO_INT(BYTE_TO_CHAR(#stcTOP_SI.NUM)) <= 38;
+	#xOB_Start := CHAR_TO_INT(BYTE_TO_CHAR(#stcTOP_SI.NUM)) = 100;
+	
+	#ErrorNum := 0;
+	#xInvalidSignalState := false;
+	#MS_Release.Value := (#OnAct.Value OR #OosAct.Value) AND #MS_RelOp;
+	
+	IF NOT (#OnAct.Value OR #OosAct.Value) THEN
+	    #MS_RelOp := false;
+	END_IF;
+	// A7d0
+	
+	IF #xFeatLocalAuth THEN
+	    #OpSt_Out := #OpSt_In OR 16#80000000;
+	ELSE    // A7d1
+	    #OpSt_Out := #OpSt_In AND 16#7FFFFFFF;
+	END_IF;
+	// A7d2
+	
+	IF #OnOp THEN
+	    #OosAct.Value := false;
+	ELSIF ((#OosLi.Value AND #xFeature_OosLiEn) AND NOT #SxOosLi) OR #OosOp THEN    // A7d3
+	    #OosAct.Value := true;
+	END_IF;
+	// A7d5
+	
+	#SxOosLi := #OosLi.Value;
+	#OnAct.Value := NOT #OosAct.Value;
+	
+	IF #OosAct.Value THEN
+	    #SxOff := true;
+	    #ErrorNum := 0;
+	    #CountMode := 0;
+	    IF #xFeatSwiPoiOOS THEN
+	        #AH_Act := #stcDigVal;
+	        #WH_Act := #stcDigVal;
+	        #TH_Act := #stcDigVal;
+	        #TL_Act := #stcDigVal;
+	        #WL_Act := #stcDigVal;
+	        #AL_Act := #stcDigVal;
+	        IF #xFeat_SwiPoiFalseAct THEN
+	            #AH_Act.Value := true;
+	            #WH_Act.Value := true;
+	            #TH_Act.Value := true;
+	            #TL_Act.Value := true;
+	            #WL_Act.Value := true;
+	            #AL_Act.Value := true;
+	        END_IF;
+	    END_IF;
+	    // A7d7
+	    
+	    #ST_Worst := 16#80;
+	    #TmMinST := 16#80;
+	END_IF;
+	// A7d6
+	
+	IF #SxFirstStart OR #xOB_Start THEN
+	    #SxFirstStart := false;
+	    #SxShowAlarm := true;
+	    IF #xOB_Start THEN
+	        #SnRunUpCyc := #RunUpCyc;
+	    END_IF;
+	    // A7da
+	    
+	    IF NOT #xFeature_StartUp THEN
+	        #SxOff := true;
+	        #CountMode := 0;
+	        #lTotalTime := ABS(DWORD_TO_DINT(#PresetTime));
+	        
+	        #nPresetDays := DINT_TO_INT(#lTotalTime / 86400);
+	        #lTotalTime := #lTotalTime MOD 86400;
+	        
+	        #nPresetHrs := DINT_TO_INT(#lTotalTime / 3600);
+	        #lTotalTime := #lTotalTime MOD 3600;
+	        
+	        #nPresetMins := DINT_TO_INT(#lTotalTime / 60);
+	        #lTotalTime := #lTotalTime MOD 60;
+	        
+	        #nPresetSec := DINT_TO_INT(#lTotalTime);
+	        
+	        #Days := #nPresetDays;
+	        #Hours := #nPresetHrs;
+	        #Minutes := #nPresetMins;
+	        #Seconds := #nPresetSec;
+	        #TotalTime := #PresetTime;
+	        
+	        #SlCntHr := INT_TO_DINT(#Hours) + INT_TO_DINT(#Days) * 24;
+	        #SlCntMs := (INT_TO_DINT(#Seconds) + INT_TO_DINT(#Minutes) * 60) * 1000;
+	        
+	        #AH_Act := #stcDigVal;
+	        #WH_Act := #stcDigVal;
+	        #TH_Act := #stcDigVal;
+	        #TL_Act := #stcDigVal;
+	        #WL_Act := #stcDigVal;
+	        #AL_Act := #stcDigVal;
+	        #SumMsgAct := #stcDigVal;
+	        
+	        IF #xFeat_SwiPoiFalseAct THEN
+	            #AH_Act.Value := true;
+	            #WH_Act.Value := true;
+	            #TH_Act.Value := true;
+	            #TL_Act.Value := true;
+	            #WL_Act.Value := true;
+	            #AL_Act.Value := true;
+	        END_IF;
+	        // A7dc
+	        
+	        #AH_Minutes := 0;
+	        #WH_Minutes := 0;
+	        #TH_Minutes := 0;
+	        #TL_Minutes := 0;
+	        #WL_Minutes := 0;
+	        #AL_Minutes := 0;
+	        
+	        #OS_PermLog := 16#FFFFFFFF;
+	        #OS_PermOut := 16#FFFFFFFF;
+	        #ST_Worst := 16#80;
+	        #TmMinST := 16#80;
+	        
+	        #MS_Release.Value := false;
+	        #MsgErr := false;
+	        
+	        #MsgStat := 16#0;
+	        #MsgAckn := 16#0;
+	        #SnDaysAHLim := 0;
+	        #SnDaysWHLim := 0;
+	        #SnDaysTHLim := 0;
+	        #SnDaysALLim := 0;
+	        #SnDaysWLLim := 0;
+	        #SnDaysTLLim := 0;
+	        #SnDaysOpHiScale := 0;
+	        #SnDaysOpLoScale := 0;
+	        #SnHrsAHLim := 0;
+	        #SnHrsWHLim := 0;
+	        #SnHrsTHLim := 0;
+	        #SnHrsALLim := 0;
+	        #SnHrsWLLim := 0;
+	        #SnHrsTLLim := 0;
+	        #SnHrsOpHiScale := 0;
+	        #SnHrsOpLoScale := 0;
+	        #SnMinsAHLim := 0;
+	        #SnMinsWHLim := 0;
+	        #SnMinsTHLim := 0;
+	        #SnMinsALLim := 0;
+	        #SnMinsWLLim := 0;
+	        #SnMinsTLLim := 0;
+	        #SnMinsOpHiScale := 0;
+	        #SnMinsOpLoScale := 0;
+	        #SdwPrevBatchId := 16#0;
+	        #SdwStepNoLoc := 16#0;
+	        #SdwBatchId := 16#0;
+	        #SxFeat_SwiPoiFalseActOld := #xFeat_SwiPoiFalseAct;
+	    END_IF;
+	    // A7db
+	    
+	    IF #xFeatStartUpWithOldOut THEN
+	        #Days := #OldDays;
+	        #Hours := #OldHours;
+	        #Minutes := #OldMinutes;
+	        #Seconds := #OldSeconds;
+	        #SlCntHr := INT_TO_DINT(#Hours) + INT_TO_DINT(#Days) * 24;
+	        #SlCntMs := (INT_TO_DINT(#Seconds) + INT_TO_DINT(#Minutes) * 60) * 1000;
+	    END_IF;
+	END_IF;
+	// A7d9
+	
+	IF NOT #OosAct.Value AND #xOB_Cycle THEN
+	    IF #xFeat_SwiPoiFalseAct XOR #SxFeat_SwiPoiFalseActOld THEN
+	        #AH_Act.Value := NOT #AH_Act.Value;
+	        #WH_Act.Value := NOT #WH_Act.Value;
+	        #TH_Act.Value := NOT #TH_Act.Value;
+	        #TL_Act.Value := NOT #TL_Act.Value;
+	        #WL_Act.Value := NOT #WL_Act.Value;
+	        #AL_Act.Value := NOT #AL_Act.Value;
+	    END_IF;
+	    // A7df
+	    
+	    #SxFeat_SwiPoiFalseActOld := #xFeat_SwiPoiFalseAct;
+	    IF #LiOp.Value THEN
+	        IF #OffLi.Value THEN
+	            #SxOff := true;
+	            IF #UpLi.Value OR #DnLi.Value THEN
+	                #ErrorNum := 51;
+	                #xInvalidSignalState := true;
+	            END_IF;
+	        ELSE
+	            IF #UpLi.Value AND #DnLi.Value THEN   // A7e1
+	                #ErrorNum := 51;
+	                #xInvalidSignalState := true;
+	            ELSE
+	                IF #UpLi.Value THEN    // A7e4
+	                    #xUpDn := true;
+	                    #SxOff := false;
+	                ELSIF #DnLi.Value THEN    // A7e6
+	                    #xUpDn := false;
+	                    #SxOff := false;
+	                END_IF;
+	            END_IF;
+	            // A7e5
+	        END_IF;
+	    ELSE    // A7e0
+	        IF #OffOp THEN
+	            #SxOff := true;
+	        END_IF;
+	        // A7ea
+	        IF #UpOp THEN
+	            #xUpDn := true;
+	            #SxOff := false;
+	        END_IF;
+	        // A7eb
+	        IF #DnOp THEN
+	            #xUpDn := false;
+	            #SxOff := false;
+	        END_IF;
+	    END_IF;
+	    // A7e9
+	    
+	    IF #SxOff THEN
+	        #CountMode := 0;
+	    ELSE    // A7ed
+	        IF #xUpDn THEN
+	            #CountMode := 1;
+	        ELSE    // A7ef
+	            #CountMode := 2;
+	        END_IF;
+	    END_IF;
+	    // A7ee
+	    
+	    #xOS_Perm_Count_Off := NOT #LiOp.Value AND #xOS_Perm_Count_Off AND NOT #SxOff;
+	    #xOS_Perm_Count_Up := (NOT #LiOp.Value AND #xOS_Perm_Count_Up) AND (NOT #xUpDn OR #SxOff);
+	    #xOS_Perm_Count_Down := (NOT #LiOp.Value AND #xOS_Perm_Count_Down) AND (#xUpDn OR #SxOff);
+	    
+	    IF #MinsAHLim > 59 OR #MinsAHLim < 0 THEN
+	        #MinsAHLim := #SnMinsAHLim;
+	    ELSE    // A7f1
+	        #SnMinsAHLim := #MinsAHLim;
+	    END_IF;
+	    // A7f2
+	    
+	    IF #MinsALLim > 59 OR #MinsALLim < 0 THEN
+	        #MinsALLim := #SnMinsALLim;
+	    ELSE    // A7f3
+	        #SnMinsALLim := #MinsALLim;
+	    END_IF;
+	    // A7f4
+	    
+	    IF #MinsWHLim > 59 OR #MinsWHLim < 0 THEN
+	        #MinsWHLim := #SnMinsWHLim;
+	    ELSE    // A7f5
+	        #SnMinsWHLim := #MinsWHLim;
+	    END_IF;
+	    // A7f6
+	    
+	    IF #MinsWLLim > 59 OR #MinsWLLim < 0 THEN
+	        #MinsWLLim := #SnMinsWLLim;
+	    ELSE    // A7f7
+	        #SnMinsWLLim := #MinsWLLim;
+	    END_IF;
+	    // A7f8
+	    
+	    IF #MinsTHLim > 59 OR #MinsTHLim < 0 THEN
+	        #MinsTHLim := #SnMinsTHLim;
+	    ELSE    // A7f9
+	        #SnMinsTHLim := #MinsTHLim;
+	    END_IF;
+	    // A7fa
+	    
+	    IF #MinsTLLim > 59 OR #MinsTLLim < 0 THEN
+	        #MinsTLLim := #SnMinsTLLim;
+	    ELSE    // A7fb
+	        #SnMinsTLLim := #MinsTLLim;
+	    END_IF;
+	    // A7fc
+	    
+	    IF #MinOpHiScale < 0 OR #MinOpHiScale > 59 THEN
+	        #MinOpHiScale := #SnMinsOpHiScale;
+	    ELSE    // A7fd
+	        #SnMinsOpHiScale := #MinOpHiScale;
+	    END_IF;
+	    // A7fe
+	    
+	    IF #MinOpLoScale < 0 OR #MinOpLoScale > 59 THEN
+	        #MinOpLoScale := #SnMinsOpLoScale;
+	    ELSE    // A7ff
+	        #SnMinsOpLoScale := #MinOpLoScale;
+	    END_IF;
+	    // A800
+	    
+	    IF #HrsAHLim > 23 OR #HrsAHLim < 0 THEN
+	        #HrsAHLim := #SnHrsAHLim;
+	    ELSE    // A801
+	        #SnHrsAHLim := #HrsAHLim;
+	    END_IF;
+	    // A802
+	    
+	    IF #HrsALLim > 23 OR #HrsALLim < 0 THEN
+	        #HrsALLim := #SnHrsALLim;
+	    ELSE    // A803
+	        #SnHrsALLim := #HrsALLim;
+	    END_IF;
+	    // A804
+	    
+	    IF #HrsWHLim > 23 OR #HrsWHLim < 0 THEN
+	        #HrsWHLim := #SnHrsWHLim;
+	    ELSE    // A805
+	        #SnHrsWHLim := #HrsWHLim;
+	    END_IF;
+	    // A806
+	    
+	    IF #HrsWLLim > 23 OR #HrsWLLim < 0 THEN
+	        #HrsWLLim := #SnHrsWLLim;
+	    ELSE    // A807
+	        #SnHrsWLLim := #HrsWLLim;
+	    END_IF;
+	    // A808
+	    
+	    IF #HrsTHLim > 23 OR #HrsTHLim < 0 THEN
+	        #HrsTHLim := #SnHrsTHLim;
+	    ELSE    // A809
+	        #SnHrsTHLim := #HrsTHLim;
+	    END_IF;
+	    // A80a
+	    
+	    IF #HrsTLLim > 23 OR #HrsTLLim < 0 THEN
+	        #HrsTLLim := #SnHrsTLLim;
+	    ELSE    // A80b
+	        #SnHrsTLLim := #HrsTLLim;
+	    END_IF;
+	    // A80c
+	    
+	    IF #HrsOpHiScale < 0 OR #HrsOpHiScale > 23 THEN
+	        #HrsOpHiScale := #SnHrsOpHiScale;
+	    ELSE    // A80d
+	        #SnHrsOpHiScale := #HrsOpHiScale;
+	    END_IF;
+	    // A80e
+	    
+	    IF #HrsOpLoScale < 0 OR #HrsOpLoScale > 23 THEN
+	        #HrsOpLoScale := #SnHrsOpLoScale;
+	    ELSE    // A80f
+	        #SnHrsOpLoScale := #HrsOpLoScale;
+	    END_IF;
+	    // A810
+	    
+	    IF #DaysAHLim > 32767 OR #DaysAHLim < 0 THEN
+	        #DaysAHLim := #SnDaysAHLim;
+	    ELSE    // A811
+	        #SnDaysAHLim := #DaysAHLim;
+	    END_IF;
+	    // A812
+	    
+	    IF #DaysALLim > 32767 OR #DaysALLim < 0 THEN
+	        #DaysALLim := #SnDaysALLim;
+	    ELSE    // A813
+	        #SnDaysALLim := #DaysALLim;
+	    END_IF;
+	    // A814
+	    
+	    IF #DaysWHLim > 32767 OR #DaysWHLim < 0 THEN
+	        #DaysWHLim := #SnDaysWHLim;
+	    ELSE    // A815
+	        #SnDaysWHLim := #DaysWHLim;
+	    END_IF;
+	    // A816
+	    
+	    IF #DaysWLLim > 32767 OR #DaysWLLim < 0 THEN
+	        #DaysWLLim := #SnDaysWLLim;
+	    ELSE    // A817
+	        #SnDaysWLLim := #DaysWLLim;
+	    END_IF;
+	    // A818
+	    
+	    IF #DaysTHLim > 32767 OR #DaysTHLim < 0 THEN
+	        #DaysTHLim := #SnDaysTHLim;
+	    ELSE    // A819
+	        #SnDaysTHLim := #DaysTHLim;
+	    END_IF;
+	    // A81a
+	    
+	    IF #DaysTLLim > 32767 OR #DaysTLLim < 0 THEN
+	        #DaysTLLim := #SnDaysTLLim;
+	    ELSE    // A81b
+	        #SnDaysTLLim := #DaysTLLim;
+	    END_IF;
+	    // A81c
+	    
+	    IF #DayOpHiScale < 0 OR #DayOpHiScale > 32767 THEN
+	        #DayOpHiScale := #SnDaysOpHiScale;
+	    ELSE    // A81d
+	        #SnDaysOpHiScale := #DayOpHiScale;
+	    END_IF;
+	    // A81e
+	    
+	    IF #DayOpLoScale < 0 OR #DayOpLoScale > 32767 THEN
+	        #DayOpLoScale := #SnDaysOpLoScale;
+	    ELSE    // A81f
+	        #SnDaysOpLoScale := #DayOpLoScale;
+	    END_IF;
+	    // A820
+	    
+	    IF #xUpDn <> #SxPrevMode THEN
+	        IF #xUpDn THEN
+	            #TL_Act.Value := #xFeat_SwiPoiFalseAct;
+	            #WL_Act.Value := #xFeat_SwiPoiFalseAct;
+	            #AL_Act.Value := #xFeat_SwiPoiFalseAct;
+	        ELSE    // A822
+	            #AH_Act.Value := #xFeat_SwiPoiFalseAct;
+	            #WH_Act.Value := #xFeat_SwiPoiFalseAct;
+	            #TH_Act.Value := #xFeat_SwiPoiFalseAct;
+	        END_IF;
+	    END_IF;
+	    // A821
+	    
+	    #lTotalTime := DWORD_TO_DINT(#PresetTime);
+	    IF DWORD_TO_DINT(#PresetTime) >= 2147483647 OR DWORD_TO_DINT(#PresetTime) < 0 THEN
+	        #PresetTime := 16#7FFFFFFF;
+	    END_IF;
+	    // A824
+	    
+	    IF ((NOT #LiOp.Value AND #xFeat_ResetDpdsOnLiOp) OR NOT #xFeat_ResetDpdsOnLiOp) AND #PresetEn THEN
+	        #lTotalTime := ABS(DWORD_TO_DINT(#PresetTime));
+	        
+	        #nPresetDays := DINT_TO_INT(#lTotalTime / 86400);
+	        #lTotalTime := #lTotalTime MOD 86400;
+	        
+	        #nPresetHrs := DINT_TO_INT(#lTotalTime / 3600);
+	        #lTotalTime := #lTotalTime MOD 3600;
+	        
+	        #nPresetMins := DINT_TO_INT(#lTotalTime / 60);
+	        #lTotalTime := #lTotalTime MOD 60;
+	        
+	        #nPresetSec := DINT_TO_INT(#lTotalTime);
+	        
+	        #Days := #nPresetDays;
+	        #Hours := #nPresetHrs;
+	        #Minutes := #nPresetMins;
+	        #Seconds := #nPresetSec;
+	        #TotalTime := #PresetTime;
+	        
+	        #SlCntHr := INT_TO_DINT(#Hours) + INT_TO_DINT(#Days) * 24;
+	        #SlCntMs := (INT_TO_DINT(#Seconds) + INT_TO_DINT(#Minutes) * 60) * 1000;
+	        
+	        #TmMinST := 16#80;
+	    END_IF;
+	    // A825
+	    
+	    IF (((#xFeat_ResetDpdsOnLiOp AND #LiOp.Value) OR NOT #xFeat_ResetDpdsOnLiOp) AND #Reset.Value) AND NOT #SxReset THEN
+	        #Days := 0;
+	        #Hours := 0;
+	        #Minutes := 0;
+	        #Seconds := 0;
+	        #SlCntHr := 0;
+	        #SlCntMs := 0;
+	        #TmMinST := 16#80;
+	    END_IF;
+	    // A826
+	    
+	    IF NOT #SxOff AND #In.Value AND NOT (NOT #SxReset AND #Reset.Value) THEN
+	        IF #CountMode = 1 THEN
+	            #SlCntMs := REAL_TO_DINT(#SampleTime * 1000.0) + #SlCntMs;
+	        ELSIF #CountMode = 2 AND NOT (#Seconds = 0 AND #Minutes = 0 AND #Hours = 0 AND #Days = 0) THEN    // A828
+	            #SlCntMs := #SlCntMs - REAL_TO_DINT(#SampleTime * 1000.0);
+	        END_IF;
+	        // A82a
+	        #SlCntHr := #SlCntMs / 3600000 + #SlCntHr;
+	        #SlCntMs := #SlCntMs MOD 3600000;
+	        IF #SlCntHr < 0 THEN
+	            #SlCntHr := 0;
+	            #SlCntMs := 0;
+	        ELSIF #SlCntMs < 0 AND #SlCntHr > 0 THEN    // A82b
+	            #SlCntMs := 3600000 + #SlCntMs;
+	            #SlCntHr := #SlCntHr - 1;
+	        END_IF;
+	        // A82d
+	        #Days := DINT_TO_INT(#SlCntHr / 24);
+	        #Hours := DINT_TO_INT(#SlCntHr MOD 24);
+	        #Minutes := DINT_TO_INT(#SlCntMs / 1000 / 60);
+	        #Seconds := DINT_TO_INT(#SlCntMs / 1000 MOD 60);
+	    END_IF;
+	    // A827
+	    #TotalTime := DINT_TO_DWORD(INT_TO_DINT(#Seconds) + INT_TO_DINT(#Minutes) * 60 + INT_TO_DINT(#Hours) * 3600 + INT_TO_DINT(#Days) * 86400);
+	    #TimeMin := INT_TO_DINT(#Days) * 1440 + INT_TO_DINT(#Hours) * 60 + INT_TO_DINT(#Minutes);
+	    #AH_Minutes := INT_TO_DINT(#DaysAHLim) * 1440 + #HrsAHLim * 60 + INT_TO_DINT(#MinsAHLim);
+	    #WH_Minutes := INT_TO_DINT(#DaysWHLim) * 1440 + #HrsWHLim * 60 + INT_TO_DINT(#MinsWHLim);
+	    #TH_Minutes := INT_TO_DINT(#DaysTHLim) * 1440 + #HrsTHLim * 60 + INT_TO_DINT(#MinsTHLim);
+	    #AL_Minutes := INT_TO_DINT(#DaysALLim) * 1440 + #HrsALLim * 60 + INT_TO_DINT(#MinsALLim);
+	    #WL_Minutes := INT_TO_DINT(#DaysWLLim) * 1440 + #HrsWLLim * 60 + INT_TO_DINT(#MinsWLLim);
+	    #TL_Minutes := INT_TO_DINT(#DaysTLLim) * 1440 + #HrsTLLim * 60 + INT_TO_DINT(#MinsTLLim);
+	    #BarOpHiScale := INT_TO_DINT(#DayOpHiScale) * 1440 + #HrsOpHiScale * 60 + INT_TO_DINT(#MinOpHiScale);
+	    #BarOpLoScale := INT_TO_DINT(#DayOpLoScale) * 1440 + #HrsOpLoScale * 60 + INT_TO_DINT(#MinOpLoScale);
+	    
+	    IF #CountMode = 1 THEN
+	        IF #TimeMin >= #AH_Minutes AND #AH_En AND NOT (#MsgLock.Value AND #xFeat_SwiPoiDis) THEN
+	            #AH_Act.Value := NOT #xFeat_SwiPoiFalseAct;
+	        ELSE    // A82f
+	            #AH_Act.Value := #xFeat_SwiPoiFalseAct;
+	        END_IF;
+	        // A830
+	        
+	        IF #TimeMin >= #WH_Minutes AND #WH_En AND NOT (#MsgLock.Value AND #xFeat_SwiPoiDis) THEN
+	            #WH_Act.Value := NOT #xFeat_SwiPoiFalseAct;
+	        ELSE    // A831
+	            #WH_Act.Value := #xFeat_SwiPoiFalseAct;
+	        END_IF;
+	        // A832
+	        
+	        IF #TimeMin >= #TH_Minutes AND #TH_En AND NOT (#MsgLock.Value AND #xFeat_SwiPoiDis) THEN
+	            #TH_Act.Value := NOT #xFeat_SwiPoiFalseAct;
+	        ELSE    // A833
+	            #TH_Act.Value := #xFeat_SwiPoiFalseAct;
+	        END_IF;
+	    ELSIF #CountMode = 2 THEN    // A82e
+	        IF (#TimeMin < #AL_Minutes OR (#TimeMin = #AL_Minutes AND #Seconds = 0)) AND #AL_En AND NOT (#MsgLock.Value AND #xFeat_SwiPoiDis) THEN
+	            #AL_Act.Value := NOT #xFeat_SwiPoiFalseAct;
+	        ELSE    // A837
+	            #AL_Act.Value := #xFeat_SwiPoiFalseAct;
+	        END_IF;
+	        // A838
+	        
+	        IF (#TimeMin < #WL_Minutes OR (#TimeMin = #WL_Minutes AND #Seconds = 0)) AND #WL_En AND NOT (#MsgLock.Value AND #xFeat_SwiPoiDis) THEN
+	            #WL_Act.Value := NOT #xFeat_SwiPoiFalseAct;
+	        ELSE    // A839
+	            #WL_Act.Value := #xFeat_SwiPoiFalseAct;
+	        END_IF;
+	        // A83a
+	        
+	        IF (#TimeMin < #TL_Minutes OR (#TimeMin = #TL_Minutes AND #Seconds = 0)) AND #TL_En AND NOT (#MsgLock.Value AND #xFeat_SwiPoiDis) THEN
+	            #TL_Act.Value := NOT #xFeat_SwiPoiFalseAct;
+	        ELSE    // A83b
+	            #TL_Act.Value := #xFeat_SwiPoiFalseAct;
+	        END_IF;
+	    ELSE    // A836
+	        #AH_Act.Value := #xFeat_SwiPoiFalseAct;
+	        #WH_Act.Value := #xFeat_SwiPoiFalseAct;
+	        #TH_Act.Value := #xFeat_SwiPoiFalseAct;
+	        #AL_Act.Value := #xFeat_SwiPoiFalseAct;
+	        #WL_Act.Value := #xFeat_SwiPoiFalseAct;
+	        #TL_Act.Value := #xFeat_SwiPoiFalseAct;
+	    END_IF;
+	    // A835
+	    
+	    #SumMsgAct.Value := (#xFeat_SwiPoiFalseAct XOR #AH_Act.Value) OR (#xFeat_SwiPoiFalseAct XOR #WH_Act.Value)
+	    OR (#xFeat_SwiPoiFalseAct XOR #TH_Act.Value) OR (#xFeat_SwiPoiFalseAct XOR #TL_Act.Value)
+	    OR (#xFeat_SwiPoiFalseAct XOR #WL_Act.Value) OR (#xFeat_SwiPoiFalseAct XOR #AL_Act.Value);
+	    
+	    IF #CountMode <> 0 AND #DeviceOn.Value THEN
+	        #OldDays := #Days;
+	        #OldHours := #Hours;
+	        #OldMinutes := #Minutes;
+	        #OldSeconds := #Seconds;
+	    END_IF;
+	    // A83d
+	    
+	    #SxReset := #Reset.Value;
+	    #SxPrevMode := #xUpDn;
+	    #DeviceOn := #In;
+	    
+	    IF NOT #SxOff THEN
+	        #stcInST.b0 := #In.ST;
+	        #stcInST.b1 := #TmMinST;
+	        #TmMinST := "PL_SelST16"(InST := #stcInST,
+	                                 Num := 2,
+	                                 SelPrio := 0);
+	    END_IF;
+	    // A83e
+	    
+	    #AH_Act.ST := #TmMinST;
+	    #WH_Act.ST := #TmMinST;
+	    #TH_Act.ST := #TmMinST;
+	    #TL_Act.ST := #TmMinST;
+	    #WL_Act.ST := #TmMinST;
+	    #AL_Act.ST := #TmMinST;
+	    
+	    #stcInST.b0 := #In.ST;
+	    #stcInST.b1 := #TmMinST;
+	    
+	    #ST_Worst := "PL_SelST16"(InST := #stcInST,
+	                              Num := 2,
+	                              SelPrio := 0);
+	    
+	    IF #SnRunUpCyc > 0 THEN
+	        #SnRunUpCyc := #SnRunUpCyc - 1;
+	    END_IF;
+	    
+	END_IF;
+	// A7de
+	
+	IF (#SnRunUpCyc = 0 AND #xOB_Cycle) OR #xOB_Start THEN
+	    IF #SnMsgToggle >= 1 THEN
+	        #SnMsgToggle := 0;
+	    ELSE    // A841
+	        #SnMsgToggle := 1;
+	    END_IF;
+	    // A842
+	    IF #SdwBatchId <> #BatchID THEN
+	        FOR #nTemp := 1 TO 32 DO // A844
+	            #SarBatchName[#nTemp] := 16#0;
+	        END_FOR;
+	        // A845
+	        // #nTemp := BLKMOV(SRCBLK := #BatchName,
+	        //                  DSTBLK => #SarBatchName);
+	        #SdwBatchId := #BatchID;
+	    END_IF;
+	    // A843
+	    
+	    IF #OosAct.Value THEN
+	        #SbMsgEff := 0;
+	    ELSE    // A846
+	        #SbMsgEff_atBool[0] := ;
+	        #SbMsgEff_atBool[1] := ;
+	        #SbMsgEff_atBool[2] := ;
+	        #SbMsgEff_atBool[3] := ;
+	        #SbMsgEff_atBool[4] := ;
+	        #SbMsgEff_atBool[5] := ;
+	        #SbMsgEff_atBool[6] := false;
+	        #SbMsgEff_atBool[7] := false;
+	    END_IF;
+	    #Event(In1  := (#xFeat_SwiPoiFalseAct XOR #AH_Act.Value) AND #AH_MsgEn AND NOT #MsgLock.Value,
+	           In2  := (#xFeat_SwiPoiFalseAct XOR #WH_Act.Value) AND #WH_MsgEn AND NOT #MsgLock.Value,
+	           In3  := (#xFeat_SwiPoiFalseAct XOR #TH_Act.Value) AND #TH_MsgEn AND NOT #MsgLock.Value,
+	           In4  := (#xFeat_SwiPoiFalseAct XOR #TL_Act.Value) AND #TL_MsgEn AND NOT #MsgLock.Value,
+	           In5  := (#xFeat_SwiPoiFalseAct XOR #WL_Act.Value) AND #WL_MsgEn AND NOT #MsgLock.Value,
+	           In6  := (#xFeat_SwiPoiFalseAct XOR #AL_Act.Value) AND #AL_MsgEn AND NOT #MsgLock.Value,
+	           In7  := false,
+	           In8  := false,
+	           In9  := false,
+	           In10 := false,
+	           In11 := false,
+	           In12 := false,
+	           In13 := false,
+	           In14 := false,
+	           In15 := false,
+	           In16 := false);
+	    #EventState.InUnack := #Event.EventState.InUnack;
+	    #EventState.InAck := #Event.EventState.InAck;
+	    #EventState.OutUnack := #Event.EventState.OutUnack;
+	    
+	    #EventState.Control.%X0 := false;
+	    #EventState.Control.%X3 := #EventState.Control.%X2;
+	    
+	END_IF;
+	// A840
+	
+	IF #xOB_Start OR #xOB_Cycle THEN
+	    IF #xOB_Start THEN
+	        #OS_PermLog := 16#0;
+	    ELSIF #OosAct.Value THEN    // A84c
+	        #OS_PermLog := 16#1002 AND #OS_PermOut;
+	    ELSE    // A84e
+	        GATHER(IN  := #OS_Perm,
+	               OUT => #OS_PermLog);
+	        #OS_PermLog.%X1 := #xOS_Perm_On;
+	        #OS_PermLog.%X3 := #xOS_Perm_Oos;
+	        #OS_PermLog.%X4 := #xOS_Perm_Count_Off;
+	        #OS_PermLog.%X5 := #xOS_Perm_Count_Up;
+	        #OS_PermLog.%X6 := #xOS_Perm_Count_Down;
+	        #OS_PermLog.%X12 := #xOS_Perm_MS_Release;
+	        #OS_PermLog.%X13 := #xOS_Perm_AH_Lim;
+	        #OS_PermLog.%X14 := #xOS_Perm_WH_Lim;
+	        #OS_PermLog.%X15 := #xOS_Perm_TH_Lim;
+	        #OS_PermLog.%X17 := #xOS_Perm_AL_Lim;
+	        #OS_PermLog.%X18 := #xOS_Perm_WL_Lim;
+	        #OS_PermLog.%X19 := #xOS_Perm_TL_Lim;
+	        #OS_PermLog.%X21 := ((NOT #LiOp.Value AND #xFeat_ResetDpdsOnLiOp) OR NOT #xFeat_ResetDpdsOnLiOp) AND #xOS_Perm_Preset_En;
+	        #OS_PermLog.%X22 := #xOS_Perm_Preset_Time;
+	        #OS_PermLog.%X23 := #xOS_Perm_AH_MsgEn;
+	        #OS_PermLog.%X24 := #xOS_Perm_WH_MsgEn;
+	        #OS_PermLog.%X25 := #xOS_Perm_TH_MsgEn;
+	        #OS_PermLog.%X26 := #xOS_Perm_TL_MsgEn;
+	        #OS_PermLog.%X27 := #xOS_Perm_WL_MsgEn;
+	        #OS_PermLog.%X28 := #xOS_Perm_AL_MsgEn;
+	    END_IF;
+	    // A84d
+	    
+	    IF NOT #OosAct.Value THEN
+	        #Status1.%X0 := #Occupied;
+	        #Status1.%X1 := #BatchEn;
+	        #Status1.%X11 := #LiOp.Value;
+	        #Status1.%X14 := #xInvalidSignalState;
+	        
+	        #Status2.%X0 := #MsgLock.Value;
+	        #Status2.%X7 := #AH_En;
+	        #Status2.%X8 := #WH_En;
+	        #Status2.%X9 := #TH_En;
+	        #Status2.%X10 := #TL_En;
+	        #Status2.%X11 := #WL_En;
+	        #Status2.%X12 := #AL_En;
+	        #Status2.%X13 := #AH_MsgEn;
+	        #Status2.%X14 := #WH_MsgEn;
+	        #Status2.%X15 := #TH_MsgEn;
+	        #Status2.%X16 := #TL_MsgEn;
+	        #Status2.%X17 := #WL_MsgEn;
+	        #Status2.%X18 := #AL_MsgEn;
+	    ELSE    // A84f
+	        #Status1 := 16#0;
+	        #Status2 := 16#0;
+	    END_IF;
+	    // A850
+	    
+	    #Status1.%X3 := #OosAct.Value;
+	    #Status1.%X4 := #OosLi.Value;
+	    #Status1.%X6 := #OnAct.Value;
+	    
+	    #Status2.%X1 := #AH_Act.Value;
+	    #Status2.%X2 := #WH_Act.Value;
+	    #Status2.%X3 := #TH_Act.Value;
+	    #Status2.%X4 := #TL_Act.Value;
+	    #Status2.%X5 := #WL_Act.Value;
+	    #Status2.%X6 := #AL_Act.Value;
+	    #Status2.%X20 := NOT #SxOff AND #xUpDn;
+	    #Status2.%X21 := #SxOff;
+	    #Status2.%X22 := NOT #SxOff AND NOT #xUpDn;
+	    #Status2.%X31 := #MS_RelOp;
+	    
+	    #OnOp := false;
+	    #OosOp := false;
+	    #OffOp := false;
+	    #UpOp := false;
+	    #DnOp := false;
+	    #PresetEn := false;
+	END_IF;
+	// A84b
+	
+END_FUNCTION_BLOCK
+

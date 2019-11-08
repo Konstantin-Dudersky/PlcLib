@@ -1,0 +1,74 @@
+﻿FUNCTION "CONV_GrayToBinary" : DWord
+{ S7_Optimized_Access := 'TRUE' }
+   VAR_INPUT 
+      variableGray : DWord;
+   END_VAR
+
+   VAR_TEMP 
+      tempBinaryBits : DWord;
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF(Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Update 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts a gray coded value to a binary
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 19.08.2015  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 28.10.2015  Siemens Industry Online Support
+	//                      Name changed
+	// 01.00.02 02.01.2017  Siemens Industry Online Support
+	//                      Upgrade: TIA Portal V14 Update 1
+	// 01.00.03 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.04 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	#tempBinaryBits := DW#16#0;
+	
+	#tempBinaryBits.%X31 := #variableGray.%X31;
+	#tempBinaryBits.%X30 := #variableGray.%X30 XOR #tempBinaryBits.%X31;
+	#tempBinaryBits.%X29 := #variableGray.%X29 XOR #tempBinaryBits.%X30;
+	#tempBinaryBits.%X28 := #variableGray.%X28 XOR #tempBinaryBits.%X29;
+	#tempBinaryBits.%X27 := #variableGray.%X27 XOR #tempBinaryBits.%X28;
+	#tempBinaryBits.%X26 := #variableGray.%X26 XOR #tempBinaryBits.%X27;
+	#tempBinaryBits.%X25 := #variableGray.%X25 XOR #tempBinaryBits.%X26;
+	#tempBinaryBits.%X24 := #variableGray.%X24 XOR #tempBinaryBits.%X25;
+	#tempBinaryBits.%X23 := #variableGray.%X23 XOR #tempBinaryBits.%X24;
+	#tempBinaryBits.%X22 := #variableGray.%X22 XOR #tempBinaryBits.%X23;
+	#tempBinaryBits.%X21 := #variableGray.%X21 XOR #tempBinaryBits.%X22;
+	#tempBinaryBits.%X20 := #variableGray.%X20 XOR #tempBinaryBits.%X21;
+	#tempBinaryBits.%X19 := #variableGray.%X19 XOR #tempBinaryBits.%X20;
+	#tempBinaryBits.%X18 := #variableGray.%X18 XOR #tempBinaryBits.%X19;
+	#tempBinaryBits.%X17 := #variableGray.%X17 XOR #tempBinaryBits.%X18;
+	#tempBinaryBits.%X16 := #variableGray.%X16 XOR #tempBinaryBits.%X17;
+	#tempBinaryBits.%X15 := #variableGray.%X15 XOR #tempBinaryBits.%X16;
+	#tempBinaryBits.%X14 := #variableGray.%X14 XOR #tempBinaryBits.%X15;
+	#tempBinaryBits.%X13 := #variableGray.%X13 XOR #tempBinaryBits.%X14;
+	#tempBinaryBits.%X12 := #variableGray.%X12 XOR #tempBinaryBits.%X13;
+	#tempBinaryBits.%X11 := #variableGray.%X11 XOR #tempBinaryBits.%X12;
+	#tempBinaryBits.%X10 := #variableGray.%X10 XOR #tempBinaryBits.%X11;
+	#tempBinaryBits.%X9 := #variableGray.%X9 XOR #tempBinaryBits.%X10;
+	#tempBinaryBits.%X8 := #variableGray.%X8 XOR #tempBinaryBits.%X9;
+	#tempBinaryBits.%X7 := #variableGray.%X7 XOR #tempBinaryBits.%X8;
+	#tempBinaryBits.%X6 := #variableGray.%X6 XOR #tempBinaryBits.%X7;
+	#tempBinaryBits.%X5 := #variableGray.%X5 XOR #tempBinaryBits.%X6;
+	#tempBinaryBits.%X4 := #variableGray.%X4 XOR #tempBinaryBits.%X5;
+	#tempBinaryBits.%X3 := #variableGray.%X3 XOR #tempBinaryBits.%X4;
+	#tempBinaryBits.%X2 := #variableGray.%X2 XOR #tempBinaryBits.%X3;
+	#tempBinaryBits.%X1 := #variableGray.%X1 XOR #tempBinaryBits.%X2;
+	#tempBinaryBits.%X0 := #variableGray.%X0 XOR #tempBinaryBits.%X1;
+	
+	#CONV_GrayToBinary := #tempBinaryBits;
+END_FUNCTION
+

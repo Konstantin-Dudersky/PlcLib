@@ -1,0 +1,239 @@
+﻿FUNCTION "CONV_StringToTaddr" : TADDR_Param
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      ipAddressString : String;   // in the format of '192.168.1.200:55047' Port number is optional [ you can obmit the : and following port number]
+   END_VAR
+
+   VAR_OUTPUT 
+      error : Bool;   // "0" = no error; "1" = error
+      status : Word;   // status and error codes
+   END_VAR
+
+   VAR_TEMP 
+      tempCharPosition : Int;
+      tempAddressString : String;
+      tempOctetString : String[4];
+      tempUInt : UInt;
+      tempPortNumberIsSpecified : Bool;
+      tempIpAdressTaddr {InstructionName := 'TADDR_Param'; LibVersion := '1.0'} : TADDR_Param;
+   END_VAR
+
+   VAR CONSTANT 
+      NO_ERROR : Word := 16#0000;   // Status no error
+      WRONG_VALUE_POS1 : Word := 16#8101;   // Wrong value on position 1
+      WRONG_VALUE_POS2 : Word := 16#8102;   // Wrong value on position 2
+      WRONG_VALUE_POS3 : Word := 16#8103;   // Wrong value on position 3
+      WRONG_VALUE_POS4 : Word := 16#8104;   // Wrong value on position 4
+      WRONG_VALUE_PORT : Word := 16#8105;   // Wrong value on port position
+      MAX_USINT : USInt := 255;
+      MAX_UINT : UInt := 65535;
+      EMPTY_STRING : String := '';
+      MAX_CHAR_FOR_IP_PART : Int := 4;
+      MAX_CHAR_FOR_PORT_PART : Int := 5;
+      INIT_VAL : USInt := 0;
+      NO_POS : Int := 0;
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Upd 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts a string IP Address
+	//                into TADDR Param format.
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge Changes applied
+	// 01.00.00 30.01.2017  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//-----------------------------------------------------------------------------
+	//Status Codes:
+	// 16#0000:  No errors
+	// 16#8101:  Wrong value on position 1
+	// 16#8102:  Wrong value on position 2
+	// 16#8103:  Wrong value on position 3
+	// 16#8104:  Wrong value on position 4
+	// 16#8105:  Wrong value on port position
+	//=============================================================================
+	
+	// Initialization
+	#error := FALSE;
+	#status := #NO_ERROR;
+	#tempAddressString := #ipAddressString;
+	#CONV_StringToTaddr.REM_IP_ADDR[1] := #INIT_VAL;
+	#CONV_StringToTaddr.REM_IP_ADDR[2] := #INIT_VAL;
+	#CONV_StringToTaddr.REM_IP_ADDR[3] := #INIT_VAL;
+	#CONV_StringToTaddr.REM_IP_ADDR[4] := #INIT_VAL;
+	#CONV_StringToTaddr.REM_PORT_NR := #INIT_VAL;
+	
+	// Process the 1st octet of the IP Address
+	#tempCharPosition := FIND(IN1 := #tempAddressString, IN2 := '.');
+	IF #tempCharPosition > #MAX_CHAR_FOR_IP_PART THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_POS1;
+	  RETURN;
+	ELSE
+	  #tempOctetString := LEFT(IN := #tempAddressString, L := #tempCharPosition - 1);
+	  // Check if string is empty
+	  IF #tempOctetString = #EMPTY_STRING THEN
+	    #error := TRUE;
+	    #status := #WRONG_VALUE_POS1;
+	    RETURN;
+	  ELSE
+	    #tempAddressString := DELETE(IN := #tempAddressString, P := 1, L := #tempCharPosition);
+	  END_IF;
+	END_IF;
+	
+	// Convert the 1st octet string to numerical value
+	STRG_VAL(IN := #tempOctetString,
+	         FORMAT := W#16#0000,
+	         P := 1,
+	         OUT => #tempUInt);
+	
+	  IF #tempUInt > #MAX_USINT THEN
+	    #error := TRUE;
+	    #status := #WRONG_VALUE_POS1;
+	    RETURN;
+	  ELSE
+	    #tempIpAdressTaddr.REM_IP_ADDR[1] := UINT_TO_BYTE(#tempUInt);
+	  END_IF;
+	
+	
+	// Process the 2nd octetstring of the IP Address
+	#tempCharPosition := FIND(IN1 := #tempAddressString, IN2 := '.');
+	IF #tempCharPosition > #MAX_CHAR_FOR_IP_PART THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_POS2;
+	  RETURN;
+	ELSE
+	  #tempOctetString := LEFT(IN := #tempAddressString, L := #tempCharPosition - 1);
+	  IF #tempOctetString = #EMPTY_STRING THEN
+	    #error := TRUE;
+	    #status := #WRONG_VALUE_POS2;
+	    RETURN;
+	  ELSE
+	    #tempAddressString := DELETE(IN := #tempAddressString, P := 1, L := #tempCharPosition);
+	  END_IF;
+	END_IF;
+	
+	// Convert the 2nd octet string TO numerical value
+	STRG_VAL(IN := #tempOctetString,
+	         FORMAT := W#16#0000,
+	         P := 1,
+	         OUT => #tempUInt);
+	
+	IF #tempUInt > #MAX_USINT THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_POS2;
+	  RETURN;
+	ELSE
+	  #tempIpAdressTaddr.REM_IP_ADDR[2] := UINT_TO_BYTE(#tempUInt);
+	END_IF;
+	
+	// Process the 3rd octet of the IP Address
+	#tempCharPosition := FIND(IN1 := #tempAddressString, IN2 := '.');
+	IF #tempCharPosition > #MAX_CHAR_FOR_IP_PART THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_POS3;
+	  RETURN;
+	ELSE
+	  #tempOctetString := LEFT(IN := #tempAddressString, L := #tempCharPosition - 1);
+	  // Check if string is empty
+	  IF #tempOctetString = #EMPTY_STRING THEN
+	    #error := TRUE;
+	    #status := #WRONG_VALUE_POS3;
+	    RETURN;
+	  ELSE
+	    #tempAddressString := DELETE(IN := #tempAddressString, P := 1, L := #tempCharPosition);
+	  END_IF;
+	END_IF;
+	
+	//Convert the 3rd octet string to numerical value
+	STRG_VAL(IN := #tempOctetString,
+	         FORMAT := W#16#0000,
+	         P := 1,
+	         OUT => #tempUInt);
+	IF #tempUInt > #MAX_USINT
+	THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_POS3;
+	  RETURN;
+	ELSE
+	  #tempIpAdressTaddr.REM_IP_ADDR[3] := UINT_TO_BYTE(#tempUInt);
+	END_IF;
+	
+	// Process the 4th octet of the IP Address
+	#tempCharPosition := FIND(IN1 := #tempAddressString, IN2 := '.');
+	IF #tempCharPosition > #NO_POS THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_POS4;
+	  RETURN;
+	ELSE
+	  #tempCharPosition := FIND(IN1 := #tempAddressString, IN2 := ':');
+	END_IF;
+	
+	// Check if Port number added
+	#tempPortNumberIsSpecified := (#tempCharPosition > #NO_POS);
+	IF #tempCharPosition > #MAX_CHAR_FOR_PORT_PART THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_PORT;
+	  RETURN;
+	END_IF;
+	IF NOT #tempPortNumberIsSpecified THEN
+	  #tempCharPosition := LEN(#tempAddressString) + 1;
+	END_IF;
+	
+	#tempOctetString := LEFT(IN := #tempAddressString, L := #tempCharPosition - 1);
+	// Check if string is empty
+	IF #tempOctetString = #EMPTY_STRING THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_POS4;
+	  RETURN;
+	ELSE
+	  #tempAddressString := DELETE(IN := #tempAddressString, P := 1, L := #tempCharPosition);
+	END_IF;
+	
+	// Convert the 4th octet string to numerical value
+	STRG_VAL(IN := #tempOctetString,
+	         FORMAT := W#16#0000,
+	         P := 1,
+	         OUT => #tempUInt);
+	
+	IF #tempUInt > #MAX_USINT THEN
+	  #error := TRUE;
+	  #status := #WRONG_VALUE_POS4;
+	  RETURN;
+	ELSE
+	  #tempIpAdressTaddr.REM_IP_ADDR[4] := UINT_TO_BYTE(#tempUInt);
+	END_IF;
+	
+	// If the string contains a port number too, parse it
+	IF #tempPortNumberIsSpecified THEN
+	  // Convert the port number string to numerical value
+	  STRG_VAL(IN := #tempAddressString,
+	           FORMAT := W#16#0000,
+	           P := 1,
+	           OUT => #tempUInt);
+	  IF #tempUInt > #MAX_UINT OR #tempUInt = 0 THEN
+	    #error := TRUE;
+	    #status := #WRONG_VALUE_PORT;
+	    RETURN;
+	  ELSE
+	    #tempIpAdressTaddr.REM_PORT_NR := #tempUInt;
+	  END_IF;
+	END_IF;
+	
+	// Write Outputs
+	#CONV_StringToTaddr := #tempIpAdressTaddr;
+END_FUNCTION
+

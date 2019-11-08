@@ -86,7 +86,7 @@ BEGIN
 	                        ErrorId    := #ErrorId);
 	    END_IF;
 	    
-	    IF #InstOBInfo.ObStart THEN
+	    IF #InstOBInfo.IsObStart THEN
 	        #stat.initialized := false;
 	    END_IF;
 	END_REGION

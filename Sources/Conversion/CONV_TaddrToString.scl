@@ -1,0 +1,99 @@
+﻿FUNCTION "CONV_TaddrToString" : String
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      ipAdressTaddr {InstructionName := 'TADDR_Param'; LibVersion := '1.0'} : TADDR_Param;
+   END_VAR
+
+   VAR_TEMP 
+      tempIpAddressString : String;
+      tempSpaceLocation : Int;
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Upd 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts  TADDR Param into a string IP Address
+	//                format.
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge /Changes applied
+	// 01.00.00 19.01.2017  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	// Convert the first IPV4 Octet to a string
+	VAL_STRG(IN     := #ipAdressTaddr.REM_IP_ADDR[1],
+	         SIZE   := 3,
+	         PREC   := 0,
+	         FORMAT := 0,
+	         P      := 1,
+	         OUT    => #tempIpAddressString);
+	
+	#tempIpAddressString[4] := '.';
+	
+	// Convert the second IPV4 Octet to a string
+	VAL_STRG(IN     := #ipAdressTaddr.REM_IP_ADDR[2],
+	         SIZE   := 3,
+	         PREC   := 0,
+	         FORMAT := 0,
+	         P      := 5,
+	         OUT    => #tempIpAddressString);
+	
+	#tempIpAddressString[8] := '.';
+	
+	// Convert the third IPV4 Octet to a string
+	VAL_STRG(IN     := #ipAdressTaddr.REM_IP_ADDR[3],
+	         SIZE   := 3,
+	         PREC   := 0,
+	         FORMAT := 0,
+	         P      := 9,
+	         OUT    => #tempIpAddressString);
+	
+	#tempIpAddressString[12] := '.';
+	
+	// Convert the fourth IPV4 Octet to a string
+	VAL_STRG(IN     := #ipAdressTaddr.REM_IP_ADDR[4],
+	         SIZE   := 3,
+	         PREC   := 0,
+	         FORMAT := 0,
+	         P      := 13,
+	         OUT    => #tempIpAddressString);
+	
+	// If the Port number is specified, copy it to the string following the ':' seperator
+	IF #ipAdressTaddr.REM_PORT_NR > 0 THEN
+	    #tempIpAddressString[16] := ':';
+	    //Convert the port number to a string
+	    VAL_STRG(IN     := #ipAdressTaddr.REM_PORT_NR,
+	             SIZE   := 5,
+	             PREC   := 0,
+	             FORMAT := 0,
+	             P      := 17,
+	             OUT    => #tempIpAddressString);
+	END_IF;
+	
+	// Delete all spaces in the string
+	#tempSpaceLocation := 1;
+	
+	WHILE #tempSpaceLocation > 0 DO
+	    #tempSpaceLocation := FIND(IN1 := #tempIpAddressString, IN2 := ' ');
+	    IF #tempSpaceLocation > 0 THEN
+	        #tempIpAddressString := DELETE(IN := #tempIpAddressString, L := 1, P := #tempSpaceLocation);
+	    END_IF;
+	END_WHILE;
+	
+	// Write outputs
+	#CONV_TaddrToString := #tempIpAddressString;
+END_FUNCTION
+

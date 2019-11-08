@@ -1,0 +1,62 @@
+﻿FUNCTION "CONV_16BitsToWord" : Word
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      bit0 : Bool;
+      bit1 : Bool;
+      bit2 : Bool;
+      bit3 : Bool;
+      bit4 : Bool;
+      bit5 : Bool;
+      bit6 : Bool;
+      bit7 : Bool;
+      bit8 : Bool;
+      bit9 : Bool;
+      bit10 : Bool;
+      bit11 : Bool;
+      bit12 : Bool;
+      bit13 : Bool;
+      bit14 : Bool;
+      bit15 : Bool;
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF(Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Update 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts 16 bits to a word
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 09.02.2017  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	#CONV_16BitsToWord.%X0 := #bit0;
+	#CONV_16BitsToWord.%X1 := #bit1;
+	#CONV_16BitsToWord.%X2 := #bit2;
+	#CONV_16BitsToWord.%X3 := #bit3;
+	#CONV_16BitsToWord.%X4 := #bit4;
+	#CONV_16BitsToWord.%X5 := #bit5;
+	#CONV_16BitsToWord.%X6 := #bit6;
+	#CONV_16BitsToWord.%X7 := #bit7;
+	#CONV_16BitsToWord.%X8 := #bit8;
+	#CONV_16BitsToWord.%X9 := #bit9;
+	#CONV_16BitsToWord.%X10 := #bit10;
+	#CONV_16BitsToWord.%X11 := #bit11;
+	#CONV_16BitsToWord.%X12 := #bit12;
+	#CONV_16BitsToWord.%X13 := #bit13;
+	#CONV_16BitsToWord.%X14 := #bit14;
+	#CONV_16BitsToWord.%X15 := #bit15;
+END_FUNCTION
+

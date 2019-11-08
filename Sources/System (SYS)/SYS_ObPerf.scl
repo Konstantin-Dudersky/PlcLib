@@ -6,7 +6,8 @@ VERSION : 0.1
    END_VAR
 
    VAR_OUTPUT 
-      ExecTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;   // Execution time in microseconds
+      ExecTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;   // Execution time in microseconds
+      ErrorId { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DWord;
    END_VAR
 
    VAR 
@@ -14,23 +15,39 @@ VERSION : 0.1
          beginTime {InstructionName := 'DTL'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DTL;
          endTime {InstructionName := 'DTL'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DTL;
       END_STRUCT;
-      statDi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
    END_VAR
 
    VAR_TEMP 
       tempI : Int;
-      tempTi : Time;
    END_VAR
 
 
 BEGIN
+	(*
+	ErrorId:
+	
+	16#2 - RD_LOC_T in begin
+	16#3 - RD_LOC_T in end
+	
+	*)
+	
+	
 	IF #BeginCycle THEN
 	    #tempI := RD_LOC_T(#stat.beginTime);
+	    IF #tempI > 1 THEN
+	        "DG_BlockError"(Sub        := 16#2,
+	                        SubErrorId := INT_TO_WORD(#tempI),
+	                        ErrorId    := #ErrorId);
+	    END_IF;
+	
 	ELSE
 	    #tempI := RD_LOC_T(#stat.endTime);
-	    // #ExecTime := "DiffDTL2μs"(In1 := #stat.endTime, In2 := #stat.beginTime);
-	    #tempTi := T_DIFF(IN1 := #stat.endTime, IN2 := #stat.beginTime);
-	    #ExecTime := TIME_TO_UDINT(#tempTi) * 1000;
+	    IF #tempI > 1 THEN
+	        "DG_BlockError"(Sub        := 16#3,
+	                        SubErrorId := INT_TO_WORD(#tempI),
+	                        ErrorId    := #ErrorId);
+	    END_IF;
+	    #ExecTime := "CONV_DiffDtlToμs"(In1 := #stat.beginTime, In2 := #stat.endTime);
 	END_IF;
 END_FUNCTION_BLOCK
 

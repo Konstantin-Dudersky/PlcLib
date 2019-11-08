@@ -3,9 +3,9 @@
 VERSION : 0.1
    VAR_OUTPUT 
       ObClass { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
-      ObStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
-      ObProgram { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
-      ObCycle { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      IsObStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      IsObProgram { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      IsObCycle { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
       FirstScan { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
       SampleTime { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
       Error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
@@ -43,9 +43,9 @@ BEGIN
 	END_IF;
 	
 	#ObClass := #temp.TopSiNone.OB_Class;
-	#ObStart := #ObClass = 100;
-	#ObProgram := #ObClass = 1;
-	#ObCycle := #ObClass = 30;
+	#IsObStart := #ObClass = 100;
+	#IsObProgram := #ObClass = 1;
+	#IsObCycle := #ObClass = 30;
 	
 	CASE #temp.TopSiNone.OB_Class OF
 	    1:

@@ -1,0 +1,51 @@
+﻿FUNCTION "CONV_DtlToUnixTime" : DInt
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      timeDTL {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;   // Time in DTL to convert
+   END_VAR
+
+   VAR_OUTPUT 
+      error : Bool;   //  Error = TRUE: Time is outside of allowed range
+   END_VAR
+
+   VAR CONSTANT 
+      DELTA_1970_1990 : DInt := 631_152_000;   // Delta between 1970-1-1 and 1990-1-1 in seconds (IEC Time Base)
+      SEC_PER_DAY : DInt := 86400;   // 86400 seconds in 1 day
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V15
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts DTL to Unix time
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 16.10.2018  Siemens Industry Online Support
+	//                      First released version
+	//=============================================================================
+	
+	#error := FALSE;
+	
+	// Check if timeUnix less than 01.01.1990
+	IF (#timeDTL < DTL#1990-01-01-00:00:00)
+	THEN
+	  #error := TRUE;
+	  #CONV_DtlToUnixTime := 0;
+	  RETURN;
+	END_IF;
+	
+	// Convert System Time (UTC) to UNIX time
+	#CONV_DtlToUnixTime := (DATE_TO_DINT(DTL_TO_DATE(#timeDTL)) * #SEC_PER_DAY)
+	                    + (TOD_TO_DINT(DTL_TO_TOD(#timeDTL)) / 1000)
+	                    + #DELTA_1970_1990;
+	
+END_FUNCTION
+

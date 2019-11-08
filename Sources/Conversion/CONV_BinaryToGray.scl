@@ -1,0 +1,35 @@
+﻿FUNCTION "CONV_BinaryToGray" : DWord
+{ S7_Optimized_Access := 'TRUE' }
+   VAR_INPUT 
+      variableBinary : DWord;
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF(Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Update 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts a binary value to a gray coded value
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 19.08.2015  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 28.10.2015  Siemens Industry Online Support
+	//                      Name changed
+	// 01.00.02 02.01.2017  Siemens Industry Online Support
+	//                      Upgrade: TIA Portal V14 Update 1
+	// 01.00.03 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.04 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	#CONV_BinaryToGray := #variableBinary XOR SHR(IN := #variableBinary, N := 1);
+END_FUNCTION
+

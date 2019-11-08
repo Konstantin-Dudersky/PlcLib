@@ -1,0 +1,237 @@
+﻿FUNCTION "CONV_StringToDtl" : DTL
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      inString : String;   // Date as String tag
+      format : Bool;   // Format of inString/ 0=traditional; 1=international
+   END_VAR
+
+   VAR_OUTPUT 
+      error : Bool;   // "0" = no error; "1" = error
+      status : Word;   // status and error codes
+   END_VAR
+
+   VAR_TEMP 
+      tempCounter : Int;   // -
+      tempOutput {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;   // -
+      tempYear : String;   // -
+      tempMonth : String;   // -
+      tempDay : String;   // -
+      tempHour : String;   // -
+      tempMinute : String;   // -
+      tempSecond : String;   // -
+      tempNanosecond : String;   // -
+      tempPosYear : USInt;   // -
+      tempPosMonth : USInt;   // -
+      tempPosDay : USInt;   // -
+      tempPosHour : USInt;   // -
+      tempPosMinute : USInt;   // -
+      tempPosSecond : USInt;   // -
+      tempPosNanosecond : USInt;   // -
+      tempPosSepYearMonth : USInt;   // -
+      tempPosSepMonthDay : USInt;   // -
+      tempPosSepHourMinute : USInt;   // -
+      tempPosSepMinuteSecond : USInt;   // -
+      tempPosSepSecondNanosecond : USInt;   // -
+   END_VAR
+
+   VAR CONSTANT 
+      NO_ERROR : Word := 16#0000;   // -
+      NO_CURRENT_JOBS : Word := 16#7000;   // -
+      ERROR_FORMAT_YEAR : Word := 16#8201;   // -
+      ERROR_FORMAT_MONTH : Word := 16#8202;   // -
+      ERROR_FORMAT_DAY : Word := 16#8203;   // -
+      ERROR_FORMAT_HOUR : Word := 16#8204;   // -
+      ERROR_FORMAT_MINUTE : Word := 16#8205;   // -
+      ERROR_FORMAT_SECOND : Word := 16#8206;   // -
+      ERROR_FORMAT_NANOSECOND : Word := 16#8207;   // -
+      INITIAL_VALUE {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL := DTL#1970-01-01-00:00:00.0;   // -
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Update 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts a string including date and time  
+	//                information into DTL format.
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 15.06.2016  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 02.01.2017  Siemens Industry Online Support
+	//                      Upgrade: TIA Portal V14 Update 1
+	// 01.00.02 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.03 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//-----------------------------------------------------------------------------
+	//Status Codes:
+	// 16#0000:  No errors
+	// 16#7000:  Initial state
+	// 16#820x:  Wrong format of the input string (Note position of components in
+	//           the string)
+	//=============================================================================
+	
+	//Set initial parameters
+	#error := FALSE;
+	#status := #NO_ERROR;
+	
+	IF #inString = ''
+	THEN
+	  #CONV_StringToDtl := #INITIAL_VALUE;
+	  #status := #NO_CURRENT_JOBS;
+	  RETURN;
+	END_IF;
+	
+	// Set format parameters for input string
+	IF NOT #format
+	THEN
+	  #tempPosYear := 1;                          // DTL  | Y| Y| Y| Y| -| M| M| -| D| D|  | H| H| :| M| M| :| S| S| .|NS|NS|NS|NS|NS|NS|NS|NS|NS
+	  #tempPosMonth := 6;                         // -----|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--
+	  #tempPosDay := 9;                           // Pos  | 1| 2| 3| 4| 5| 6| 7| 8| 9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29
+	  #tempPosHour := 12;
+	  #tempPosMinute := 15;
+	  #tempPosSecond := 18;
+	  #tempPosNanosecond := 21;
+	  #tempPosSepYearMonth := 5;
+	  #tempPosSepMonthDay := 8;
+	  #tempPosSepHourMinute := 14;
+	  #tempPosSepMinuteSecond := 17;
+	  #tempPosSepSecondNanosecond := 20;
+	ELSE
+	  #tempPosYear := 7;                          // DTL  | D| D| -| M| M| -| Y| Y| Y| Y|  | H| H| :| M| M| :| S| S| .|NS|NS|NS|NS|NS|NS|NS|NS|NS
+	  #tempPosMonth := 4;                         // -----|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--
+	  #tempPosDay := 1;                           // Pos  | 1| 2| 3| 4| 5| 6| 7| 8| 9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29
+	  #tempPosHour := 12;
+	  #tempPosMinute := 15;
+	  #tempPosSecond := 18;
+	  #tempPosNanosecond := 21;
+	  #tempPosSepYearMonth := 6;
+	  #tempPosSepMonthDay := 3;
+	  #tempPosSepHourMinute := 14;
+	  #tempPosSepMinuteSecond := 17;
+	  #tempPosSepSecondNanosecond := 20;
+	END_IF;
+	
+	// Separating the input string into components of DTL
+	#tempYear := MID(IN := #inString, L := 4, P := #tempPosYear);
+	#tempMonth := MID(IN := #inString, L := 2, P := #tempPosMonth);
+	#tempDay := MID(IN := #inString, L := 2, P := #tempPosDay);
+	#tempHour := MID(IN := #inString, L := 2, P := #tempPosHour);
+	#tempMinute := MID(IN := #inString, L := 2, P := #tempPosMinute);
+	#tempSecond := MID(IN := #inString, L := 2, P := #tempPosSecond);
+	#tempNanosecond := MID(IN := #inString, L := 9, P := #tempPosNanosecond);
+	
+	// Replacing of the "blan" in the nanosecondstring by "0"
+	// Effect:   xx.1 --> xx.1 AND NOT xx.1 --> xx.000000001
+	FOR #tempCounter := 1 TO 9 BY 1
+	DO
+	  IF #tempNanosecond[#tempCounter] = ' '
+	  THEN
+	    #tempNanosecond[#tempCounter] := '0';
+	  END_IF;
+	END_FOR;
+	
+	// Converting separated String components into DTL values
+	STRG_VAL(FORMAT := W#16#0000,
+	         IN := #tempYear,
+	         OUT => #tempOutput.YEAR,
+	         P := 1);
+	
+	STRG_VAL(FORMAT := W#16#0000,
+	         IN := #tempMonth,
+	         OUT => #tempOutput.MONTH,
+	         P := 1);
+	
+	STRG_VAL(FORMAT := W#16#0000,
+	         IN := #tempDay,
+	         OUT => #tempOutput.DAY,
+	         P := 1);
+	
+	STRG_VAL(FORMAT := W#16#0000,
+	         IN := #tempHour,
+	         OUT => #tempOutput.HOUR,
+	         P := 1);
+	
+	STRG_VAL(FORMAT := W#16#0000,
+	         IN := #tempMinute,
+	         OUT => #tempOutput.MINUTE,
+	         P := 1);
+	
+	STRG_VAL(FORMAT := W#16#0000,
+	         IN := #tempSecond,
+	         OUT => #tempOutput.SECOND,
+	         P := 1);
+	
+	STRG_VAL(FORMAT := W#16#0000,
+	         IN := #tempNanosecond,
+	         OUT => #tempOutput.NANOSECOND,
+	         P := 1);
+	
+	// Format check
+	IF (#tempOutput.YEAR < 1970) OR (2262 < #tempOutput.YEAR)
+	THEN
+	  #error := TRUE;
+	  #status := #ERROR_FORMAT_YEAR;
+	  #CONV_StringToDtl := #INITIAL_VALUE;
+	  RETURN;
+	END_IF;
+	
+	IF (#tempOutput.MONTH < 1) OR (12 < #tempOutput.MONTH)
+	THEN
+	  #error := TRUE;
+	  #status := #ERROR_FORMAT_MONTH;
+	  #CONV_StringToDtl := #INITIAL_VALUE;
+	  RETURN;
+	END_IF;
+	
+	IF (#tempOutput.DAY < 1) OR (31 < #tempOutput.DAY)
+	THEN
+	  #error := TRUE;
+	  #status := #ERROR_FORMAT_DAY;
+	  #CONV_StringToDtl := #INITIAL_VALUE;
+	  RETURN;
+	END_IF;
+	
+	IF (#tempOutput.HOUR < 0) OR (23 < #tempOutput.HOUR)
+	THEN
+	  #error := TRUE;
+	  #status := #ERROR_FORMAT_HOUR;
+	  #CONV_StringToDtl := #INITIAL_VALUE;
+	  RETURN;
+	END_IF;
+	
+	IF (#tempOutput.MINUTE < 0) OR (59 < #tempOutput.MINUTE)
+	THEN
+	  #error := TRUE;
+	  #status := #ERROR_FORMAT_MINUTE;
+	  #CONV_StringToDtl := #INITIAL_VALUE;
+	  RETURN;
+	END_IF;
+	
+	IF (#tempOutput.SECOND < 0) OR (59 < #tempOutput.SECOND)
+	THEN
+	  #error := TRUE;
+	  #status := #ERROR_FORMAT_SECOND;
+	  #CONV_StringToDtl := #INITIAL_VALUE;
+	  RETURN;
+	END_IF;
+	
+	IF (#tempOutput.NANOSECOND < 0) OR (999999999 < #tempOutput.NANOSECOND)
+	THEN
+	  #error := TRUE;
+	  #status := #ERROR_FORMAT_NANOSECOND;
+	  #CONV_StringToDtl := #INITIAL_VALUE;
+	  RETURN;
+	END_IF;
+	
+	#CONV_StringToDtl := #tempOutput;
+END_FUNCTION
+

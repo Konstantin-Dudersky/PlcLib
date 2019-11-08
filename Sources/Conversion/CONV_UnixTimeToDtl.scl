@@ -1,0 +1,65 @@
+﻿FUNCTION "CONV_UnixTimeToDtl" : DTL
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      timeUnix : DInt;   // Unix time to convert
+   END_VAR
+
+   VAR_OUTPUT 
+      error : Bool;   //  Error = TRUE: Time is outside of allowed range
+   END_VAR
+
+   VAR_TEMP 
+      tempDate : DInt;   // Temporary Date value
+      tempTime : DInt;   // Temporary Time value
+      tempDTL {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;   // Temporary DTL value
+   END_VAR
+
+   VAR CONSTANT 
+      DELTA_1970_1990 : DInt := 631_152_000;   // Delta between 1970-1-1 and 1990-1-1 in seconds (IEC Time Base)
+      SEC_PER_DAY : DInt := 86400;   // 86400 seconds in 1 day
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V15
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts Unix time to DTL
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 16.10.2018  Siemens Industry Online Support
+	//                      First released version
+	//=============================================================================
+	
+	#error := FALSE;
+	
+	// Check if timeUnix less than 01.01.1990
+	IF (#timeUnix < #DELTA_1970_1990)
+	THEN
+	  #error := TRUE;
+	  #CONV_UnixTimeToDtl := DTL#1990-01-01-00:00:00;
+	  RETURN;
+	END_IF;
+	
+	// Convert date
+	#tempDate := (#timeUnix - #DELTA_1970_1990) / #SEC_PER_DAY;
+	#tempDTL := DATE_TO_DTL(DINT_TO_DATE(#tempDate));
+	
+	// Convert time
+	#tempTime := #timeUnix - #DELTA_1970_1990 - (#tempDate * #SEC_PER_DAY);
+	#tempDTL.HOUR := DINT_TO_USINT(#tempTime / 3600);
+	#tempDTL.MINUTE := DINT_TO_USINT(#tempTime MOD 3600 / 60);
+	#tempDTL.SECOND := DINT_TO_USINT(#tempTime MOD 60);
+	
+	// Output date and time
+	#CONV_UnixTimeToDtl := #tempDTL;
+	
+END_FUNCTION
+

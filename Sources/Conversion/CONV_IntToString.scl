@@ -1,0 +1,45 @@
+﻿FUNCTION "CONV_IntToString" : String
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      intValue : DInt;   // Integer value to convert
+   END_VAR
+
+   VAR_TEMP 
+      tempString : String;   // Temp string
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 SP1 Upd 5
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts a integer value to a string
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 04.07.2018  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	// Convert integer to string
+	#tempString := DINT_TO_STRING(#intValue);
+	
+	// Delete padding before number
+	WHILE (FIND(IN1 := #tempString, IN2 := ' ') <> 0) DO
+	  #tempString := DELETE(IN := #tempString, L := 1, P := 1);
+	END_WHILE;
+	
+	// Output string
+	#CONV_IntToString := #tempString;
+END_FUNCTION
+

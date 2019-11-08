@@ -1,0 +1,66 @@
+﻿FUNCTION "CONV_WordToBits" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      "word" : Word;
+   END_VAR
+
+   VAR_OUTPUT 
+      bit0 : Bool;
+      bit1 : Bool;
+      bit2 : Bool;
+      bit3 : Bool;
+      bit4 : Bool;
+      bit5 : Bool;
+      bit6 : Bool;
+      bit7 : Bool;
+      bit8 : Bool;
+      bit9 : Bool;
+      bit10 : Bool;
+      bit11 : Bool;
+      bit12 : Bool;
+      bit13 : Bool;
+      bit14 : Bool;
+      bit15 : Bool;
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF(Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Update 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts a word to 16 bits
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 09.02.2017  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	#bit0 := #word.%X0;
+	#bit1 := #word.%X1;
+	#bit2 := #word.%X2;
+	#bit3 := #word.%X3;
+	#bit4 := #word.%X4;
+	#bit5 := #word.%X5;
+	#bit6 := #word.%X6;
+	#bit7 := #word.%X7;
+	#bit8 := #word.%X8;
+	#bit9 := #word.%X9;
+	#bit10 := #word.%X10;
+	#bit11 := #word.%X11;
+	#bit12 := #word.%X12;
+	#bit13 := #word.%X13;
+	#bit14 := #word.%X14;
+	#bit15 := #word.%X15;
+END_FUNCTION
+

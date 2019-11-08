@@ -1,0 +1,184 @@
+﻿FUNCTION "CONV_DtlToString" : String
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      inDTL {InstructionName := 'DTL'; LibVersion := '1.0'} : DTL;   // Date as DTL tag
+      format : Bool;   // 1 = traditional, 0 = international
+      separatorDate : Char;   // Separator between date components
+   END_VAR
+
+   VAR_TEMP 
+      tempString : String;   // -
+      tempSepTime : Char;   // -
+      tempSepTimeNano : Char;   // -
+      tempPosYear : USInt;   // -
+      tempPosMonth : USInt;   // -
+      tempPosDay : USInt;   // -
+      tempPosHour : USInt;   // -
+      tempPosMinute : USInt;   // -
+      tempPosSecond : USInt;   // -
+      tempPosNanosecond : USInt;   // -
+      tempPosSepYearMonth : USInt;   // -
+      tempPosSepMonthDay : USInt;   // -
+      tempPosSepHourMinute : USInt;   // -
+      tempPosSepMinuteSecond : USInt;   // -
+      tempPosSepSecondNanosecond : USInt;   // -
+      tempCount : Int;   // -
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14 Update 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function converts DTL into a string.  
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge / Changes applied
+	// 01.00.00 15.06.2016  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 02.01.2017  Siemens Industry Online Support
+	//                      Upgrade: TIA Portal V14 Update 1
+	// 01.00.02 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.03 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	// Initialization
+	#tempString := '';
+	#tempSepTime := ':';
+	#tempSepTimeNano := '.';
+	
+	// Set format parameters for output string
+	IF NOT #format
+	THEN                                          // International ISO 8601
+	  #tempPosYear := 1;                          // DTL  | Y| Y| Y| Y| -| M| M| -| D| D|  | H| H| :| M| M| :| S| S| .|NS|NS|NS|NS|NS|NS|NS|NS|NS
+	  #tempPosMonth := 6;                         // -----|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--
+	  #tempPosDay := 9;                           // Pos  | 1| 2| 3| 4| 5| 6| 7| 8| 9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29
+	  #tempPosHour := 12;
+	  #tempPosMinute := 15;
+	  #tempPosSecond := 18;
+	  #tempPosNanosecond := 21;
+	  #tempPosSepYearMonth := 5;
+	  #tempPosSepMonthDay := 8;
+	  #tempPosSepHourMinute := 14;
+	  #tempPosSepMinuteSecond := 17;
+	  #tempPosSepSecondNanosecond := 20;
+	ELSE                                          // Traditional (EU)
+	  #tempPosYear := 7;                          // DTL  | D| D| -| M| M| -| Y| Y| Y| Y|  | H| H| :| M| M| :| S| S| .|NS|NS|NS|NS|NS|NS|NS|NS|NS
+	  #tempPosMonth := 4;                         // -----|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--
+	  #tempPosDay := 1;                           // Pos  | 1| 2| 3| 4| 5| 6| 7| 8| 9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29
+	  #tempPosHour := 12;
+	  #tempPosMinute := 15;
+	  #tempPosSecond := 18;
+	  #tempPosNanosecond := 21;
+	  #tempPosSepYearMonth := 6;
+	  #tempPosSepMonthDay := 3;
+	  #tempPosSepHourMinute := 14;
+	  #tempPosSepMinuteSecond := 17;
+	  #tempPosSepSecondNanosecond := 20;
+	END_IF;
+	
+	// Convert "Value" into "String" and place at the right position
+	VAL_STRG(FORMAT := W#16#0000,
+	         IN := #inDTL.YEAR,
+	         P := #tempPosYear,
+	         PREC := 0,
+	         SIZE := 4,
+	         OUT => #tempString);    // DTL YEAR --> String --> #tempPosYear
+	
+	VAL_STRG(FORMAT := W#16#0000,
+	         IN := #inDTL.MONTH,
+	         P := #tempPosMonth,
+	         PREC := 0,
+	         SIZE := 2,
+	         OUT => #tempString);     // DTL MONTH --> String --> #tempPosMonth
+	
+	VAL_STRG(FORMAT := W#16#0000,
+	         IN := #inDTL.DAY,
+	         P := #tempPosDay,
+	         PREC := 0,
+	         SIZE := 2,
+	         OUT => #tempString);     // DTL DAY --> String --> #tempPosDay
+	
+	VAL_STRG(FORMAT := W#16#0000,
+	         IN := #inDTL.HOUR,
+	         P := #tempPosHour,
+	         PREC := 0,
+	         SIZE := 2,
+	         OUT => #tempString);     // DTL HOUR --> String --> #tempPosHour
+	
+	VAL_STRG(FORMAT := W#16#0000,
+	         IN := #inDTL.MINUTE,
+	         P := #tempPosMinute,
+	         PREC := 0,
+	         SIZE := 2,
+	         OUT => #tempString);     // DTL MINUTE --> String --> #tempPosMinute
+	
+	VAL_STRG(FORMAT := W#16#0000,
+	         IN := #inDTL.SECOND,
+	         P := #tempPosSecond,
+	         PREC := 0,
+	         SIZE := 2,
+	         OUT => #tempString);     // DTL SECOND --> String --> #tempPosSecond
+	
+	VAL_STRG(FORMAT := W#16#0000,
+	         IN := #inDTL.NANOSECOND,
+	         P := #tempPosNanosecond,
+	         PREC := 0,
+	         SIZE := 9,
+	         OUT => #tempString);     // DTL NANOSECOND --> String --> #tempPosNanosecond
+	
+	// Place separators at the right position in the string
+	#tempString[#tempPosSepYearMonth] := #separatorDate;
+	#tempString[#tempPosSepMonthDay] := #separatorDate;
+	#tempString[#tempPosSepHourMinute] := #tempSepTime;
+	#tempString[#tempPosSepMinuteSecond] := #tempSepTime;
+	#tempString[#tempPosSepSecondNanosecond] := #tempSepTimeNano;
+	
+	// Correcting the string, due to the conversion of a leading "0" value into a "blank".
+	// Replacing of "blank" by "0"
+	IF (#tempString[#tempPosMonth] = ' ')
+	THEN
+	  #tempString[#tempPosMonth] := '0';
+	END_IF;
+	
+	IF (#tempString[#tempPosDay] = ' ')
+	THEN
+	  #tempString[#tempPosDay] := '0';
+	END_IF;
+	
+	IF (#tempString[#tempPosHour] = ' ')
+	THEN
+	  #tempString[#tempPosHour] := '0';
+	END_IF;
+	
+	IF (#tempString[#tempPosMinute] = ' ')
+	THEN
+	  #tempString[#tempPosMinute] := '0';
+	END_IF;
+	
+	IF (#tempString[#tempPosSecond] = ' ')
+	THEN
+	  #tempString[#tempPosSecond] := '0';
+	END_IF;
+	
+	FOR #tempCount := 0 TO 5 BY 1
+	DO
+	  IF (#tempString[#tempPosNanosecond + #tempCount] = ' ')
+	  THEN
+	    #tempString[#tempPosNanosecond + #tempCount] := '0';
+	  ELSE
+	    EXIT;
+	  END_IF;
+	END_FOR;
+	
+	#CONV_DtlToString := #tempString;
+END_FUNCTION
+
