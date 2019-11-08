@@ -957,18 +957,18 @@ BEGIN
 	    END_IF;
 	    // A843
 	    
-	    IF #OosAct.Value THEN
-	        #SbMsgEff := 0;
-	    ELSE    // A846
-	        #SbMsgEff_atBool[0] := ;
-	        #SbMsgEff_atBool[1] := ;
-	        #SbMsgEff_atBool[2] := ;
-	        #SbMsgEff_atBool[3] := ;
-	        #SbMsgEff_atBool[4] := ;
-	        #SbMsgEff_atBool[5] := ;
-	        #SbMsgEff_atBool[6] := false;
-	        #SbMsgEff_atBool[7] := false;
-	    END_IF;
+	    // if #OosAct.Value then
+	    //     #SbMsgEff := 0;
+	    // else    // A846
+	    //     #SbMsgEff_atBool[0] := ;
+	    //     #SbMsgEff_atBool[1] := ;
+	    //     #SbMsgEff_atBool[2] := ;
+	    //     #SbMsgEff_atBool[3] := ;
+	    //     #SbMsgEff_atBool[4] := ;
+	    //     #SbMsgEff_atBool[5] := ;
+	    //     #SbMsgEff_atBool[6] := false;
+	    //     #SbMsgEff_atBool[7] := false;
+	    // end_if;
 	    #Event(In1  := (#xFeat_SwiPoiFalseAct XOR #AH_Act.Value) AND #AH_MsgEn AND NOT #MsgLock.Value,
 	           In2  := (#xFeat_SwiPoiFalseAct XOR #WH_Act.Value) AND #WH_MsgEn AND NOT #MsgLock.Value,
 	           In3  := (#xFeat_SwiPoiFalseAct XOR #TH_Act.Value) AND #TH_MsgEn AND NOT #MsgLock.Value,

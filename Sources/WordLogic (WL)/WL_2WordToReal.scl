@@ -1,0 +1,20 @@
+﻿FUNCTION "WL_2WordToReal" : Real
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Word0 : Word;
+      Word1 : Word;
+   END_VAR
+
+   VAR_TEMP 
+      tempDword : DWord;
+   END_VAR
+
+
+BEGIN
+	#tempDword.%W0 := #Word0;
+	#tempDword.%W1 := #Word1;
+	
+	#WL_2WordToReal := DWORD_TO_REAL(#tempDword);
+END_FUNCTION
+

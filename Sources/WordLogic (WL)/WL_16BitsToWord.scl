@@ -1,4 +1,4 @@
-﻿FUNCTION "CONV_16BitsToWord" : Word
+﻿FUNCTION "WL_16BitsToWord" : Word
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT 
@@ -42,21 +42,21 @@ BEGIN
 	//                      Upgrade: TIA V15.1
 	//=============================================================================
 	
-	#CONV_16BitsToWord.%X0 := #bit0;
-	#CONV_16BitsToWord.%X1 := #bit1;
-	#CONV_16BitsToWord.%X2 := #bit2;
-	#CONV_16BitsToWord.%X3 := #bit3;
-	#CONV_16BitsToWord.%X4 := #bit4;
-	#CONV_16BitsToWord.%X5 := #bit5;
-	#CONV_16BitsToWord.%X6 := #bit6;
-	#CONV_16BitsToWord.%X7 := #bit7;
-	#CONV_16BitsToWord.%X8 := #bit8;
-	#CONV_16BitsToWord.%X9 := #bit9;
-	#CONV_16BitsToWord.%X10 := #bit10;
-	#CONV_16BitsToWord.%X11 := #bit11;
-	#CONV_16BitsToWord.%X12 := #bit12;
-	#CONV_16BitsToWord.%X13 := #bit13;
-	#CONV_16BitsToWord.%X14 := #bit14;
-	#CONV_16BitsToWord.%X15 := #bit15;
+	#WL_16BitsToWord.%X0 := #bit0;
+	#WL_16BitsToWord.%X1 := #bit1;
+	#WL_16BitsToWord.%X2 := #bit2;
+	#WL_16BitsToWord.%X3 := #bit3;
+	#WL_16BitsToWord.%X4 := #bit4;
+	#WL_16BitsToWord.%X5 := #bit5;
+	#WL_16BitsToWord.%X6 := #bit6;
+	#WL_16BitsToWord.%X7 := #bit7;
+	#WL_16BitsToWord.%X8 := #bit8;
+	#WL_16BitsToWord.%X9 := #bit9;
+	#WL_16BitsToWord.%X10 := #bit10;
+	#WL_16BitsToWord.%X11 := #bit11;
+	#WL_16BitsToWord.%X12 := #bit12;
+	#WL_16BitsToWord.%X13 := #bit13;
+	#WL_16BitsToWord.%X14 := #bit14;
+	#WL_16BitsToWord.%X15 := #bit15;
 END_FUNCTION
 

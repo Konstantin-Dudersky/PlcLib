@@ -1,4 +1,4 @@
-﻿FUNCTION "CONV_WordToBits" : Void
+﻿FUNCTION "WL_WordTo16Bits" : Void
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT 
