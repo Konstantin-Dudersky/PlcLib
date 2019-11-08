@@ -1,4 +1,4 @@
-﻿FUNCTION "WL_SwapWordInDword" : Void
+﻿FUNCTION "WL_SwapWordsInDword" : Void
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_IN_OUT 

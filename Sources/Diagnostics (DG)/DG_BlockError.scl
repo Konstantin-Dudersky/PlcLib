@@ -29,7 +29,7 @@ BEGIN
 	ELSIF EQ_Type(IN1 := #SubErrorId, IN2 := #tempDw) THEN
 	    VariantGet(SRC := #SubErrorId,
 	               DST => #tempDw);
-	    "WL_SwapWordInDword"(#tempDw);
+	    "WL_SwapWordsInDword"(#tempDw);
 	    #tempDw.%W1 := #Sub;
 	    #ErrorId := #tempDw;
 	END_IF;

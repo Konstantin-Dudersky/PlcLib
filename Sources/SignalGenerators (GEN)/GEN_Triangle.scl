@@ -1,0 +1,103 @@
+﻿FUNCTION_BLOCK "GEN_Triangle"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Amplitude : Real := 1.0;   // Amplitude
+      Offset : Real := 1.0;   // Offset
+      Period : Time := T#10S;   // Periode in milliseconds
+      RstOp : Bool;   // Reset values
+   END_VAR
+
+   VAR_OUTPUT 
+      TriangleValues : Real;   // Calculated triangle values
+      Error : Bool;   // "0" = no error; "1" = error
+      ErrorId : DWord;   // Status and error codes
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         "counter" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;   // Counter value
+      END_STRUCT;
+      SYS_OBInfo_Instance { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "SYS_OBInfo";
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         periodInMs : UDInt;
+      END_STRUCT;
+      tempDword : DWord;
+   END_VAR
+
+   VAR CONSTANT 
+      ERROR_SUB_LOCAL : Word := 16#1;   // PI
+      ERROR_ID_WRONGOB : DWord := 16#8001;   // Status no error
+      ERROR_SUB_OBInfo : Word := 16#2;   // Status OB not available
+   END_VAR
+
+
+BEGIN
+	(*
+	=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V15 Upd 2
+	Restrictions:   Call in cyclic interrupt
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This function generates a rectangle signal
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        In charge/Changes applied
+	// 01.00.00 03.07.2018  Siemens Industry Online Support
+	//                      First released version
+	// 01.00.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.00.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//-----------------------------------------------------------------------------
+	//Status Codes: -
+	//=============================================================================
+	*)
+	
+	
+	// Initialize
+	#SYS_OBInfo_Instance();
+	IF #SYS_OBInfo_Instance.Error THEN
+	    "DG_BlockError"(Sub        := #ERROR_SUB_OBInfo,
+	                    SubErrorId := #SYS_OBInfo_Instance.ErrorID,
+	                    ErrorId    := #ErrorId);
+	    RETURN;
+	END_IF;
+	
+	IF NOT #SYS_OBInfo_Instance.IsObCycle THEN
+	    #tempDword := #ERROR_ID_WRONGOB;
+	    "DG_BlockError"(Sub        := #ERROR_SUB_LOCAL,
+	                    SubErrorId := #tempDword,
+	                    ErrorId    := #ErrorId);
+	    RETURN;
+	END_IF;
+	
+	
+	IF (#RstOp = TRUE)
+	THEN
+	    #stat.counter := 0;
+	    #TriangleValues := 0;
+	ELSE
+	    // Increment Counter with each call of "OB_Cyclic_interrupt"
+	    #temp.periodInMs := TIME_TO_UDINT(#Period);
+	    #stat.counter := #stat.counter + TIME_TO_UDINT(#SYS_OBInfo_Instance.SampleTime);
+	    #stat.counter := #stat.counter MOD (#temp.periodInMs);
+	    
+	    IF #stat.counter <= (#temp.periodInMs / 2) THEN
+	        #TriangleValues := 4.0 * #Amplitude / UDINT_TO_REAL(#temp.periodInMs)
+	        * UDINT_TO_REAL(#stat.counter) - #Amplitude + #Offset;
+	    ELSE
+	        #TriangleValues := -4.0 * #Amplitude / UDINT_TO_REAL(#temp.periodInMs)
+	        * UDINT_TO_REAL(#stat.counter) + 3 * #Amplitude + #Offset;
+	    END_IF;
+	END_IF;
+	
+	#Error := #ErrorId <> 16#0;
+END_FUNCTION_BLOCK
+

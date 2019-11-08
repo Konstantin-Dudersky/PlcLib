@@ -1,0 +1,80 @@
+﻿FUNCTION_BLOCK "GEN_Impulse"
+{ S7_Optimized_Access := 'TRUE' }
+   VAR_INPUT 
+      Frequency { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real := 0.5;   // Frequnency in Hz
+   END_VAR
+
+   VAR_OUTPUT 
+      Impulse { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // Impulse output
+      Countdown { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;   // -
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         frequency { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;
+         timePulse { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;
+      END_STRUCT;
+      instTofTimePulse {InstructionName := 'TOF_TIME'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TOF_TIME;
+   END_VAR
+
+   VAR_TEMP 
+      temp : Struct
+         impulse : Bool;
+         countdown : Time;
+      END_STRUCT;
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1212C DC/DC/DC FW:V4.1
+	// Engineering:   TIA Portal V14 Update 1
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200 / S7-1500)
+	// Functionality: This fuction block generates impulses in the given frequency 
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        Expert in charge / Changes applied
+	// 01.00.00 19.08.2015  Siemens Industry Online Support
+	//                      First released version
+	// 01.01.01 16.06.2015  Siemens Industry Online Support
+	//                      LGF_Impulse calls new LGF_Frequency V1.1.1
+	// 01.01.02 02.01.2017  Siemens Industry Online Support
+	//                      Upgrade: TIA Portal V14 Update 1
+	// 01.02.00 02.02.2017  Siemens Industry Online Support
+	//                      Code optimization: no call of LGF_Frequency
+	//                      Fix at output "countdown"
+	// 01.02.01 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.02.02 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	IF #Frequency <= 0.0 THEN
+	  #temp.impulse := FALSE;
+	  #temp.countdown := t#0s;
+	  
+	ELSE
+	  // Assign frequency
+	  #stat.timePulse := t#1000s / TRUNC(#Frequency * 1000);
+	  #stat.frequency := #Frequency;
+	  
+	  // Assign impulse
+	  #temp.impulse := NOT #instTofTimePulse.Q;
+	  
+	  // Time pulse expired >> Start again
+	  #instTofTimePulse(IN := NOT #instTofTimePulse.Q,
+	                    PT := #stat.timePulse);
+	  
+	  // Assign countdown
+	  #temp.countdown := #stat.timePulse - #instTofTimePulse.ET;
+	END_IF;
+	
+	// Write outputs
+	#Impulse := #temp.impulse;
+	#Countdown := #temp.countdown;
+END_FUNCTION_BLOCK
+

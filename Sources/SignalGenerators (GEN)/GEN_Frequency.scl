@@ -1,0 +1,96 @@
+﻿FUNCTION_BLOCK "GEN_Frequency"
+{ S7_Optimized_Access := 'TRUE' }
+   VAR_INPUT 
+      Frequency { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real := 1.0;   // Input in Hz
+      PulsePauseRatio { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real := 1.0;   // Pulse pause ratio
+   END_VAR
+
+   VAR_OUTPUT 
+      Clock { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;   // -
+      Countdown { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;   // -
+   END_VAR
+
+   VAR 
+      stat { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Struct
+         frequency { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   // -
+         timePeriod { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;   // -
+         timePulse { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;   // -
+         timePause { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Time;   // -
+         pulsePauseRatio { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Real;   // -
+      END_STRUCT;
+      instTofTimePulse {InstructionName := 'TOF_TIME'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TOF_TIME;   // -
+      instTofTimePause {InstructionName := 'TOF_TIME'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TOF_TIME;   // -
+   END_VAR
+
+   VAR_TEMP 
+      tempPulseRate : Real;   // -
+      tempPauseRate : Real;   // -
+   END_VAR
+
+   VAR CONSTANT 
+      "NULL" : Real := 0.0;   // -
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	
+	//-----------------------------------------------------------------------------
+	// Library:       LGF (Library General Functions)
+	// Tested with:   CPU1214C DC/DC/DC FW:V4.2
+	// Engineering:   TIA Portal V14
+	// Restrictions:  -
+	// Requirements:  PLC (S7-1200, S7-1500)
+	// Functionality: Generates frequency signal
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version  Date        Expert in charge / Changes applied
+	// 01.00.00 19.08.2015  Siemens Industry Online Support
+	//                      First released version
+	// 01.01.00 25.05.2016  Siemens Industry Online Support
+	//                      New function: pulse pause ratio
+	// 01.01.01 26.05.2016  Siemens Industry Online Support
+	//                      Add comments
+	// 01.01.02 02.01.2017  Siemens Industry Online Support
+	//                      Upgrade: TIA Portal V14 Update 1
+	// 01.01.03 17.08.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15 Update 2
+	// 01.01.04 23.11.2018  Siemens Industry Online Support
+	//                      Upgrade: TIA V15.1
+	//=============================================================================
+	
+	IF (#Frequency <= #NULL) OR (#PulsePauseRatio <= #NULL)  // If input is <= 0.0 : block is off
+	THEN
+	    #Clock := FALSE;
+	    #Countdown := t#0s;
+	ELSE
+	    // assign frequency and pulse pause ratio one time 
+	    IF #stat.frequency <> #Frequency OR #stat.pulsePauseRatio <> #PulsePauseRatio THEN
+	        RESET_TIMER(TIMER := #instTofTimePause);
+	        RESET_TIMER(TIMER := #instTofTimePulse);
+	        
+	        #tempPulseRate := #PulsePauseRatio / (#PulsePauseRatio + 1); // Calculate pulse rate   
+	        #tempPauseRate := 1.0 - #tempPulseRate;                      // Calculate pause rate   
+	        #stat.timePeriod := UDINT_TO_TIME(REAL_TO_UDINT((1000.0 / #Frequency)));                 // Calculate period time 
+	        #stat.timePulse := UDINT_TO_TIME(REAL_TO_UDINT((1000.0 * #tempPulseRate / #Frequency))); // Calculate pulse time   
+	        #stat.timePause := UDINT_TO_TIME(REAL_TO_UDINT((1000.0 * #tempPauseRate / #Frequency))); // Calculate pause time
+	        #stat.frequency := #Frequency;
+	        #stat.pulsePauseRatio := #PulsePauseRatio;
+	    END_IF;
+	    
+	    // TOF_off expired >> Start again
+	    #instTofTimePulse(IN := NOT #instTofTimePause.Q,
+	                      PT := #stat.timePulse);
+	    #Countdown := #stat.timePulse - #instTofTimePulse.ET;
+	    
+	    #instTofTimePause(IN := #instTofTimePulse.Q,
+	                      PT := #stat.timePause);
+	    
+	    IF #Countdown = t#0s THEN
+	        #Countdown := #stat.timePause - #instTofTimePause.ET;
+	    END_IF;
+	    
+	    #Clock := #instTofTimePulse.Q; // Assign ouptut 
+	END_IF;
+END_FUNCTION_BLOCK
+
